@@ -2491,38 +2491,35 @@ public class NspireKeyboard extends javax.swing.JFrame {
     private void STOPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_STOPActionPerformed
         currentSequence = currentSequence.replace(String.format("%s%s", System.getProperty("line.separator"), System.getProperty("line.separator")), String.format("%s", System.getProperty("line.separator")));
         if (currentSequence.length() > 2) {
-            BufferedWriter oFile = null;
-            try {
-
-                String sequenceName = (String) JOptionPane.showInputDialog(
-                        null,
-                        "Sequence Name ?",
-                        "nRemote Sequence Saving",
-                        1);
-                if ((sequenceName != null) && (sequenceName.length() > 0)) {
-                    sequenceName = sequenceName.trim();
-                } else {
-                    sequenceName = "nRemoteSequence-" + (Calendar.getInstance().getTime().toString()).substring(0, 19).replace(" ", "_").replace(":", "-").trim();
+            String defaultName = "nRemoteSequence-" + (Calendar.getInstance().getTime().toString()).substring(0, 19).replace(" ", "_").replace(":", "-").trim();
+            JFileChooser fc = new JFileChooser(System.getProperty("user.home"));
+            fc.setDialogTitle("nRemote Sequence Saving");
+            fc.setFileFilter(new FileNameExtensionFilter("Sequence (text) files", "txt"));
+            fc.setSelectedFile(new File(defaultName + ".txt"));
+            if (fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File target = fc.getSelectedFile();
+                if (!target.getName().toLowerCase().endsWith(".txt")) {
+                    target = new File(target.getPath() + ".txt");
                 }
-
-                oFile = new BufferedWriter(new OutputStreamWriter(
-                        new FileOutputStream(sequenceName + ".txt"), "UTF-8"));
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
+                BufferedWriter oFile = null;
+                try {
+                    oFile = new BufferedWriter(new OutputStreamWriter(
+                            new FileOutputStream(target), "UTF-8"));
+                    oFile.write(currentSequence);
+                    System.out.println("Sequence recording finished. File saved.");
+                } catch (IOException e) {
+                    JOptionPane.showMessageDialog(this,
+                            "Could not save the sequence:\n" + e.getMessage(),
+                            "nRemote Sequence Saving", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    if (oFile != null) {
+                        try {
+                            oFile.close();
+                        } catch (IOException ignored) {
+                        }
+                    }
+                }
             }
-
-            //System.out.println(currentSequence);
-            try {
-                oFile.write(currentSequence);
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
-            try {
-                oFile.close();
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
-            System.out.println("Sequence recording finished. File saved.");
         }
         System.out.println("Sequence recording stopped");
         currentSequence = "";
