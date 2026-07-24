@@ -2701,13 +2701,31 @@ public class NspireKeyboard extends javax.swing.JFrame {
             this.screenFrame.setScreenImage(icn);
             //setVisible(true);
             //this.toFront();
-            icn = scale(icn.getImage(), this.getWidth() / 335f);
+            icn = scale(icn.getImage(), fitScale(icn));
             screen.setSize(getWidth(), icn.getIconHeight());
             SCREEN.setSize(icn.getIconWidth(), icn.getIconHeight());
             SCREENlastheight = SCREEN.getHeight();
         }
 
         SCREEN.setIcon(icn);
+    }
+
+    private float fitScale(ImageIcon icn) {
+        float ratioX = this.getWidth() / 335f;
+        // Cap the scale by the height left over after the keypad panels, so a
+        // maximized window can never push the keys out of view. Before the
+        // first layout pass the panel heights are 0; fall back to width-only.
+        int keypadHeight = top.getHeight() + digit.getHeight() + alpha.getHeight() + bottom.getHeight();
+        int availableHeight = getContentPane().getHeight() - keypadHeight - 12;
+        float ratio = ratioX;
+        if (keypadHeight > 0 && availableHeight > 0) {
+            float ratioY = availableHeight / (float) icn.getIconHeight();
+            ratio = Math.min(ratioX, ratioY);
+        }
+        if (ratio < 0.1f) {
+            ratio = 0.1f;
+        }
+        return ratio;
     }
 
     private ImageIcon scale(Image src, float scale) {
