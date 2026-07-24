@@ -17,6 +17,20 @@ public class SymbolsFrame extends javax.swing.JFrame {
         initComponents();
         ImageIcon icn = new ImageIcon(getClass().getResource("nremote.png"));
         this.setIconImage(icn.getImage());
+
+        // These four symbols have no keycode in TI's remote-key table
+        // (verified against the NspireVirtualKeyStroke key map): the sends
+        // ~ctrl_suchthat~, ~ctrl_quote~, ~shift_slash~ and "%" were always
+        // silently dropped. Disabled until a protocol path exists.
+        String noKeycode = "Not supported: TI's remote-key protocol has no keycode for this symbol";
+        EMARK.setEnabled(false);
+        EMARK.setToolTipText(noKeycode);
+        DOLLAR.setEnabled(false);
+        DOLLAR.setToolTipText(noKeycode);
+        BACKSLASH.setEnabled(false);
+        BACKSLASH.setToolTipText(noKeycode);
+        PERCENT.setEnabled(false);
+        PERCENT.setToolTipText(noKeycode);
     }
 
     /**

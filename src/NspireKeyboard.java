@@ -63,6 +63,9 @@ public class NspireKeyboard extends javax.swing.JFrame {
         // Swing normally consumes Tab for focus traversal before it reaches
         // the key listener; disable that so Tab reaches the calculator.
         setFocusTraversalKeysEnabled(false);
+        // Verified on-device (OS 3.6): the handheld ignores ~e_power_x~ even
+        // though it is a valid protocol key name (its ctrl variant types ln).
+        EXP.setToolTipText("The handheld's firmware ignores the remote e^x keystroke (TI limitation)");
         STOP.setVisible(false);
         SCREEN.setIcon(new ImageIcon(Screen.generateLoadingScreen("LOADING ...")));
         this.noScreen.setSelected(noScreenshots);
@@ -2368,7 +2371,9 @@ public class NspireKeyboard extends javax.swing.JFrame {
     }//GEN-LAST:event_TRIGActionPerformed
 
     private void POW10ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_POW10ActionPerformed
-        sendEvent("~10_power_x~");
+        // TI's key table names this ~ten_power_x~; the old ~10_power_x~ was
+        // never a valid name and the send was silently dropped.
+        sendEvent("~ten_power_x~");
     }//GEN-LAST:event_POW10ActionPerformed
 
     private void NUM_NEGActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NUM_NEGActionPerformed
@@ -2632,7 +2637,15 @@ public class NspireKeyboard extends javax.swing.JFrame {
     }//GEN-LAST:event_ALLActionPerformed
 
     private void sendArrowKey(String keyStr) {
-        if (Shift_state == true) {
+        // TI's key table has ~shift_hold_<arrow>~ for shift-drag and
+        // ~shift_grab~ for shift+click; plain hold_ / ctrl_hold_ names do not
+        // exist and would be silently dropped by the handheld.
+        if (Shift_state && !Ctrl_state) {
+            if (keyStr.equals("click")) {
+                Shift_state = false;
+                sendEvent("~shift_grab~");
+                return;
+            }
             keyStr = "hold_" + keyStr;
         }
         sendEvent("~" + keyStr + "~");
