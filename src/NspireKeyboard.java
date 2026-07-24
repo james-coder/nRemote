@@ -39,6 +39,8 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
     private SymbolsFrame symbolsFrame = null;
     private DeviceSelectionFrame deviceSelectionFrame = null;
     private FaceplateFrame faceplateFrame = null;
+    private javax.swing.JButton facRecord = null;   // Record/Stop toggle on the faceplate control bar
+    private javax.swing.JCheckBox facNoScreen = null;
     private boolean isRecording = false;
     private String currentSequence = "";
 
@@ -88,9 +90,97 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         this.screenFrame.setVisible(!showFaceplate);
 
         if (showFaceplate) {
-            this.faceplateFrame = new FaceplateFrame(this, true);
+            this.faceplateFrame = new FaceplateFrame(this, true, buildFaceplateControls());
+            // Keep drag-and-drop .tns file transfer working in faceplate mode.
+            new DropTarget(this.faceplateFrame, new MyDragDropListener());
             this.faceplateFrame.setVisible(true);
         }
+    }
+
+    /**
+     * The program controls that have no key on the calculator image — sequence
+     * record/stop/load, Disable Screen, and device targeting — as a control bar
+     * shown under the faceplate. Each reuses the existing handler so behaviour
+     * matches the classic keyboard window exactly.
+     */
+    private javax.swing.JPanel buildFaceplateControls() {
+        java.awt.Color bg = new java.awt.Color(51, 51, 51);
+        javax.swing.JPanel bar = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 6, 4));
+        bar.setBackground(bg);
+
+        facRecord = new javax.swing.JButton("● Record");
+        facRecord.setToolTipText("Record a key sequence to a file");
+        facRecord.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (!isRecording) {
+                    RECORDActionPerformed(null);
+                } else {
+                    STOPActionPerformed(null);
+                }
+                facRecord.setText(isRecording ? "■ Stop" : "● Record");
+            }
+        });
+        bar.add(facRecord);
+
+        javax.swing.JButton load = new javax.swing.JButton("▶ Load");
+        load.setToolTipText("Load and play a saved sequence");
+        load.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                LOADActionPerformed(null);
+            }
+        });
+        bar.add(load);
+
+        facNoScreen = new javax.swing.JCheckBox("Disable Screen");
+        facNoScreen.setBackground(bg);
+        facNoScreen.setForeground(java.awt.Color.WHITE);
+        facNoScreen.setToolTipText("Stop fetching the handheld screen (faster typing)");
+        facNoScreen.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                // Only the screen-fetch check reads this; no window resize needed here.
+                noScreen.setSelected(facNoScreen.isSelected());
+                if (faceplateFrame != null && facNoScreen.isSelected()) {
+                    faceplateFrame.setScreenImage(null);
+                }
+            }
+        });
+        bar.add(facNoScreen);
+
+        javax.swing.JLabel sep = new javax.swing.JLabel("   ");
+        bar.add(sep);
+
+        final javax.swing.JToggleButton allBtn = new javax.swing.JToggleButton("All", true);
+        javax.swing.JToggleButton selBtn = new javax.swing.JToggleButton("Selection");
+        javax.swing.ButtonGroup grp = new javax.swing.ButtonGroup();
+        grp.add(allBtn);
+        grp.add(selBtn);
+        allBtn.setToolTipText("Send keys to all connected handhelds");
+        selBtn.setToolTipText("Send keys only to the selected handhelds");
+        allBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                ALL.setSelected(true);
+                ALLActionPerformed(null);
+            }
+        });
+        selBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                SELECTION.setSelected(true);
+                SELECTIONActionPerformed(null);
+            }
+        });
+        bar.add(allBtn);
+        bar.add(selBtn);
+
+        javax.swing.JButton devices = new javax.swing.JButton("Devices…");
+        devices.setToolTipText("Choose which handhelds to control");
+        devices.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                deviceSelectionFrame.setVisible(true);
+            }
+        });
+        bar.add(devices);
+
+        return bar;
     }
 
     /**

@@ -11,18 +11,29 @@ public class FaceplateFrame extends javax.swing.JFrame {
     private final FaceplatePanel panel;
 
     public FaceplateFrame(FaceplatePanel.Listener listener) {
-        this(listener, false);
+        this(listener, false, null);
+    }
+
+    public FaceplateFrame(FaceplatePanel.Listener listener, boolean primary) {
+        this(listener, primary, null);
     }
 
     /**
-     * @param primary when true, this is the app's main window (faceplate-only
-     *                mode), so closing it quits nRemote; otherwise it just hides.
+     * @param primary  when true, this is the app's main window (faceplate-only
+     *                 mode), so closing it quits nRemote; otherwise it just hides.
+     * @param controls optional panel of extra controls (record/load/device
+     *                 selection/…) that have no key on the calculator image;
+     *                 placed below the faceplate. May be null.
      */
-    public FaceplateFrame(FaceplatePanel.Listener listener, boolean primary) {
+    public FaceplateFrame(FaceplatePanel.Listener listener, boolean primary, java.awt.Component controls) {
         java.awt.Image face = new ImageIcon(getClass().getResource("faceplate.png")).getImage();
         panel = new FaceplatePanel(face);
         panel.setListener(listener);
-        setContentPane(panel);
+        getContentPane().setLayout(new java.awt.BorderLayout());
+        getContentPane().add(panel, java.awt.BorderLayout.CENTER);
+        if (controls != null) {
+            getContentPane().add(controls, java.awt.BorderLayout.SOUTH);
+        }
         setTitle("nRemote — TI-Nspire Faceplate");
         ImageIcon icn = new ImageIcon(getClass().getResource("nremote.png"));
         setIconImage(icn.getImage());
