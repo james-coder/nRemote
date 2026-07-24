@@ -72,10 +72,34 @@ Nspire keypad matrix (8 rows × 11 cols).
 
 ## Booting an OS image
 
-Firebird boots a **flash image**, not a bare `.tno`. Building one needs, in
-addition to the OS file: **boot2** and a **manuf** image. Firebird can assemble
-a flash from these (Flash → create). The `.tno` we obtain from
-`education.ti.com` (issue #19 / the download thread) supplies only the OS layer.
+Firebird boots a **flash image**, not a bare `.tno`. Building one needs boot2,
+the OS, and a **manuf** image.
+
+The `.tno` is a ZIP container (a 63-byte text manifest header, then a standard
+ZIP). Verified against `TI_Nspire_3.6.0.550.tno` (the non-CX build for our
+handheld, from TI-Planet archive id 29558 — the exact OS `education.ti.com` no
+longer serves). It holds 7 members:
+
+| member          | size      | notes                                  |
+|-----------------|-----------|----------------------------------------|
+| `manifest.txt`  | 436 B     | version (`3.6.0` / boot2 `3.40.0`) + SHA-256 of each part |
+| `manifest.sig`  | 393 B     | manifest signature                     |
+| `manifest.cer`  | 1243 B    | manifest certificate                   |
+| `TI-Nspire.img` | 9.4 MB    | OS image (`"TI-Nspire"` header tag; body entropy 8.0 → packed/signed) |
+| `TI-Nspire.cer` | 1243 B    | OS certificate                         |
+| `boot2.img`     | 977 KB    | **boot2** (`"BOOT2"` header tag, 2011)  |
+| `boot2.cer`     | 817 B     | boot2 certificate                      |
+
+So **boot2 and the OS both come from the `.tno`** — extract with any unzip tool
+(it tolerates the 63-byte prefix). That leaves only a **manuf** image (device
+identity/calibration) to source or synthesize before Firebird can assemble a
+bootable flash.
+
+Note on "decompile": the OS body is compressed/signed (entropy 8.0), so static
+disassembly of OS code from the image alone is not feasible. What *is* readable:
+the container, the boot2 image, all headers/versions, and the OS's internal
+`phoenix/…` resource path table (~1200 entries). Actual code RE happens by
+**booting the image in Firebird** and inspecting via its debugger/GDB stub.
 
 ## Bonus: settles an open hardware question
 
@@ -90,6 +114,7 @@ physical calculator and a human finger — by sending `~click~` (→
 - [x] `EmulatorBridge` TCP client + wire protocol (tested vs. mock)
 - [x] `Remote` emulator seam (synthetic device, default-off) — compiles vs. real TI jars
 - [x] `--emulator[=host:port]` launch flag
+- [x] OS image acquired + container mapped; `boot2.img` + `TI-Nspire.img` extracted
 - [ ] Firebird TCP bridge patch + keypad-matrix name table
-- [ ] Flash image (boot2 + manuf + `.tno`)
+- [ ] `manuf` image, then assemble a bootable flash in Firebird
 - [ ] End-to-end test: GUI drives the emulated screen + keys
