@@ -2372,10 +2372,17 @@ public class NspireKeyboard extends javax.swing.JFrame {
     private void fromKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_fromKeyPressed
         int code = evt.getKeyCode();
         //System.out.println(code + " " + evt);
+        if (code == KeyEvent.VK_SHIFT || code == KeyEvent.VK_CONTROL
+                || code == KeyEvent.VK_ALT || code == KeyEvent.VK_META) {
+            // A bare modifier press must not latch any state: physical modifiers
+            // only apply to the keystroke they are held for. The on-screen
+            // SHIFT/CTRL toggle buttons are the only persistent modifier state.
+            return;
+        }
         if (evt.isShiftDown()) {
             Shift_state = true;
         }
-        if (evt.isControlDown()) {
+        if (evt.isControlDown() || evt.isMetaDown()) {
             Ctrl_state = true;
         }
         if (code == KeyEvent.VK_ESCAPE) {
@@ -2402,16 +2409,12 @@ public class NspireKeyboard extends javax.swing.JFrame {
             MENUActionPerformed(null);
         } else if (code == KeyEvent.VK_HOME) {
             ONActionPerformed(null);
-        } else if (code == KeyEvent.VK_META) {
-            CTRLActionPerformed(null);
         } else {
             //System.out.println(KeyEvent.getKeyText(code));
-            if (code != KeyEvent.VK_SHIFT && code != KeyEvent.VK_CONTROL) {
-                if (Ctrl_state) {
-                    sendEvent(KeyEvent.getKeyText(code).toLowerCase());
-                } else {
-                    sendEvent(Character.toString(evt.getKeyChar()));
-                }
+            if (Ctrl_state) {
+                sendEvent(KeyEvent.getKeyText(code).toLowerCase());
+            } else {
+                sendEvent(Character.toString(evt.getKeyChar()));
             }
         }
     }//GEN-LAST:event_fromKeyPressed
@@ -2608,14 +2611,12 @@ public class NspireKeyboard extends javax.swing.JFrame {
                     keyStr = keyStr.replace("~", "");
                 }
                 keyStr = "~ctrl_" + keyStr + "~";
-                Ctrl_state = false;
             } else if (Shift_state == true) {
                 if (keyStr.charAt(0) == '~') {
                     keyStr = "~shift_" + keyStr.replace("~", "") + "~";
                 } else {
                     keyStr = keyStr.toUpperCase();
                 }
-                Shift_state = false;
             }
             //System.out.println(keyStr);
             if (ALL.isSelected()) {
@@ -2627,6 +2628,11 @@ public class NspireKeyboard extends javax.swing.JFrame {
             }
         } catch (Exception e) {
         }
+
+        // Single consumption point: every keystroke uses up both modifiers,
+        // so a stray Shift/Ctrl can never linger and corrupt the next key.
+        Ctrl_state = false;
+        Shift_state = false;
 
         if (isRecording == true) {
             if (keyStr.charAt(0) == '~') {
