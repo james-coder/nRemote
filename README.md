@@ -80,8 +80,8 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
       - Shift+click sent the invalid `~shift_hold_click~` — now sends TI's `~shift_grab~`.  
       - e^x (`~e_power_x~`) is a valid protocol name but the handheld's firmware ignores it (its ctrl variant types ln) — a TI limitation nRemote cannot work around.  
       - The `!`, `$`, `\` and `%` symbol-palette buttons never had a keycode in TI's protocol; they are now disabled with an explanatory tooltip.  
-    Q5 : Clicking OK in a dialog on the handheld via the click button does nothing.  
-    A5: Verified on-device: the handheld itself ignores the touchpad-click key for dialog buttons — this is TI firmware behavior, not an nRemote bug. Use Enter to activate dialog buttons, exactly as on the physical handheld.
+    Q5 : The touchpad center-click doesn't select menu items or dialog buttons.  
+    A5: Fixed in v1.10.1. The handheld ignores the remote `~click~` keystroke for selection (verified on-device, even with a full press+release), so the center-click / CLIC button now sends Enter, which activates the highlighted item exactly like the physical center-click.
 
 
 #V - Changelog :
@@ -103,7 +103,8 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 - v1.8.0a : *Public* Quickly made it compatible with 3.6/3.9 (not compatible with older versions anymore). Not tested on Windows. Real-time screen seems broken, not sure why.
 - v1.8.1a : *Public* Fixed Real-time screen (TI had encapsulated the screen object).
 - v1.9.0 : *Fork* First release of this fork. Integrates the bug-fix round described in "About this fork" above: sticky modifier state, maximize scaling, refresh pipeline rebuild (background fetch + EDT-safe updates + transport lock), Disable Screen sizing, sequence save/playback robustness, device-list staleness, keyboard input fixes, startup retry.
-- v1.10.0 : *Fork* Added an optional clickable TI-Nspire Touchpad faceplate (`--faceplate`): a scalable image of the calculator with every key mapped and the live handheld screen overlaid in its screen bezel.
+- v1.10.0 : *Fork* Added an optional clickable TI-Nspire Touchpad faceplate (`--faceplate`): a scalable image of the calculator with every key mapped and the live handheld screen overlaid in its screen bezel. Also: physical-keyboard typing, a control bar (record/load/screen/device) and drag-drop in faceplate mode.
+- v1.10.1 : *Fork* The touchpad center-click (and CLIC button) now selects/activates the highlighted item — the handheld ignores the remote ~click~ keystroke, so it is sent as Enter (verified on-device).
 
 Future :
 - Mouse/pointer translation from the computer screen to the calculator (needs protocol investigation with a handheld)  
