@@ -75,7 +75,7 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         EXP.setToolTipText("The handheld's firmware ignores the remote e^x keystroke (TI limitation)");
         // Verified on-device (OS 3.6): dialog buttons ignore the click key
         // and are activated with Enter, exactly like on the physical handheld.
-        CLIC.setToolTipText("Touchpad click. Note: dialog buttons (OK/Cancel) need Enter, as on the handheld");
+        CLIC.setToolTipText("Touchpad center-click: selects/activates the highlighted item (sent as Enter — the remote ~click~ is ignored by the handheld)");
         STOP.setVisible(false);
         SCREEN.setIcon(new ImageIcon(Screen.generateLoadingScreen("LOADING ...")));
         this.noScreen.setSelected(noScreenshots);
@@ -2406,7 +2406,7 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
 
         tiplanet.setForeground(new java.awt.Color(255, 255, 255));
         tiplanet.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.10.0 (fork)");
+        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.10.1 (fork)");
         tiplanet.setFocusable(false);
         bottom.add(tiplanet);
 
@@ -2806,6 +2806,16 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
                 return;
             }
             keyStr = "hold_" + keyStr;
+        }
+        if (keyStr.equals("click")) {
+            // The touchpad center-click selects/activates the highlighted item.
+            // Verified on-device (OS 3.6): the remote ~click~ keystroke is
+            // ignored for this — it selects nothing on the home screen or in
+            // menus, and doesn't activate dialog buttons, even with a full
+            // press+release. ~enter~ activates them exactly like the physical
+            // center-click, so a plain center-click maps to enter.
+            sendEvent("~enter~");
+            return;
         }
         sendEvent("~" + keyStr + "~");
     }
