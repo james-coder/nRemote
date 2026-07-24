@@ -2712,43 +2712,53 @@ public class NspireKeyboard extends javax.swing.JFrame {
     }
 
     private ImageIcon fetchScreenIcon() {
-        ImageIcon icn = null;
-        if (Remote.getNumberOfDevices() > 0) {
-            if (!this.noScreen.isSelected()) {
-                try {
-                    if (ALL.isSelected()) {
-                        icn = new ImageIcon(Remote.getScreen(Remote.theCalcs[0]));
-                    } else {
-                        INodeID[] tbl = getSelectedDevices();
-                        BufferedImage img = null;
-                        if (tbl != null && tbl.length > 0) {
-                            img = Remote.getScreen(tbl[0]);
-                        }
-                        if (img != null) {
-                            icn = new ImageIcon(img);
-                        } else {
-                            icn = new ImageIcon(Screen.generateErrorScreen("SELECT A DEVICE !"));
-                        }
-                    }
-                } catch (Exception ignored) {
+        if (Remote.getNumberOfDevices() <= 0) {
+            return new ImageIcon(Screen.generateErrorScreen("CONNECT A DEVICE !"));
+        }
+        if (this.noScreen.isSelected()) {
+            return null;
+        }
+        try {
+            INodeID target = null;
+            if (ALL.isSelected()) {
+                INodeID[] calcs = Remote.theCalcs;
+                if (calcs != null && calcs.length > 0) {
+                    target = calcs[0];
+                }
+            } else {
+                INodeID[] tbl = getSelectedDevices();
+                if (tbl != null && tbl.length > 0) {
+                    target = tbl[0];
+                } else {
+                    return new ImageIcon(Screen.generateErrorScreen("SELECT A DEVICE !"));
                 }
             }
-        } else {
-            icn = new ImageIcon(Screen.generateErrorScreen("CONNECT A DEVICE !"));
+            if (target == null) {
+                return null;
+            }
+            BufferedImage img = Remote.getScreen(target);
+            if (img == null) {
+                return null;
+            }
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            return null;
         }
-        return icn;
     }
 
     private void applyScreenImage(ImageIcon icn) {
-        if (icn != null) {
-            this.screenFrame.setScreenImage(icn);
-            //setVisible(true);
-            //this.toFront();
-            icn = scale(icn.getImage(), fitScale(icn));
-            screen.setSize(getWidth(), icn.getIconHeight());
-            SCREEN.setSize(icn.getIconWidth(), icn.getIconHeight());
-            SCREENlastheight = SCREEN.getHeight();
+        if (icn == null) {
+            // Transient fetch failure (or screen disabled): keep the last
+            // good frame instead of blanking the display.
+            return;
         }
+        this.screenFrame.setScreenImage(icn);
+        //setVisible(true);
+        //this.toFront();
+        icn = scale(icn.getImage(), fitScale(icn));
+        screen.setSize(getWidth(), icn.getIconHeight());
+        SCREEN.setSize(icn.getIconWidth(), icn.getIconHeight());
+        SCREENlastheight = SCREEN.getHeight();
 
         SCREEN.setIcon(icn);
     }
