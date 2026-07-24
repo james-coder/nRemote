@@ -12,6 +12,10 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.Calendar;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
  * To change this template, choose Tools | Templates
@@ -36,6 +40,17 @@ public class NspireKeyboard extends javax.swing.JFrame {
     private DeviceSelectionFrame deviceSelectionFrame = null;
     private boolean isRecording = false;
     private String currentSequence = "";
+
+    // Screenshot fetching happens on this single background thread; only the
+    // resulting Swing update is marshalled back onto the EDT.
+    private final ExecutorService screenFetcher = Executors.newSingleThreadExecutor(new ThreadFactory() {
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, "nRemote-screen-fetch");
+            t.setDaemon(true);
+            return t;
+        }
+    });
+    private final AtomicBoolean refreshPending = new AtomicBoolean(false);
 
     public NspireKeyboard(boolean noScreenshots, boolean screenScan) {
         this.trigFrame = new TrigFrame();
@@ -2672,6 +2687,31 @@ public class NspireKeyboard extends javax.swing.JFrame {
     }
 
     public void RefreshSreen() {
+        // Safe to call from any thread. Requests are coalesced: while a fetch
+        // is queued or running, further requests are dropped (the pending one
+        // will produce at least as fresh a frame).
+        if (!refreshPending.compareAndSet(false, true)) {
+            return;
+        }
+        screenFetcher.submit(new Runnable() {
+            public void run() {
+                ImageIcon fetched = null;
+                try {
+                    fetched = fetchScreenIcon();
+                } finally {
+                    refreshPending.set(false);
+                }
+                final ImageIcon icn = fetched;
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        applyScreenImage(icn);
+                    }
+                });
+            }
+        });
+    }
+
+    private ImageIcon fetchScreenIcon() {
         ImageIcon icn = null;
         if (Remote.getNumberOfDevices() > 0) {
             if (!this.noScreen.isSelected()) {
@@ -2696,7 +2736,10 @@ public class NspireKeyboard extends javax.swing.JFrame {
         } else {
             icn = new ImageIcon(Screen.generateErrorScreen("CONNECT A DEVICE !"));
         }
+        return icn;
+    }
 
+    private void applyScreenImage(ImageIcon icn) {
         if (icn != null) {
             this.screenFrame.setScreenImage(icn);
             //setVisible(true);
@@ -2740,10 +2783,8 @@ public class NspireKeyboard extends javax.swing.JFrame {
     }
 
     public void updateDeviceList() {
-        try {
-            Remote.connect();
-        } catch (Exception ignored) {
-        }
+        // UI only: the node list itself is refreshed by the polling thread
+        // (Remote.connect) so no network work happens on the EDT.
         if (Remote.theCalcs == null) {
             return;
         }

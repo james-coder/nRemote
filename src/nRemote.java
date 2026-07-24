@@ -67,19 +67,34 @@ public class nRemote {
         }
         k.RefreshSreen();
 
+        // Polling loop. Network work (node list, screen requests) stays on
+        // this thread; all Swing updates are marshalled onto the EDT.
+        final NspireKeyboard keyboard = k;
         int last_number = 0;
         while (true) {
             int number = Remote.getNumberOfDevices();
             if (number != last_number) {
-                k.updateDeviceList();
-                k.updateFields();
+                try {
+                    Remote.connect();
+                } catch (Exception ignored) {
+                }
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        keyboard.updateDeviceList();
+                        keyboard.updateFields();
+                    }
+                });
                 last_number = number;
             } else {
                 if (number > 0) {
                     k.RefreshSreen();
-                    Thread.sleep(300L);
+                    Thread.sleep(150L);
                 } else {
-                    k.updateFields();
+                    SwingUtilities.invokeLater(new Runnable() {
+                        public void run() {
+                            keyboard.updateFields();
+                        }
+                    });
                     Thread.sleep(2000L);
                 }
             }
