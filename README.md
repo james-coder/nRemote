@@ -58,6 +58,8 @@ Note: It's possible that the software refuses to launch with that new file in th
 For any platform, you may also try to launch it via terminal ("java -jar [path_to_the_folder]/nRemote.jar")
 It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 
+**Graphical faceplate (v1.10.0):** launch with `--faceplate` (i.e. `java -jar nRemote.jar --faceplate`) to open a clickable picture of the TI-Nspire Touchpad. Click a key to press it — modifiers, arrows/click, and the trig/π/symbols palettes behave exactly like the text keyboard — and the handheld's live screen is shown right in the faceplate's screen area. It resizes freely and will drive the built-in emulator too, once that lands.
+
 
 #IV - Known Issues :
 -----------------
@@ -101,6 +103,7 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 - v1.8.0a : *Public* Quickly made it compatible with 3.6/3.9 (not compatible with older versions anymore). Not tested on Windows. Real-time screen seems broken, not sure why.
 - v1.8.1a : *Public* Fixed Real-time screen (TI had encapsulated the screen object).
 - v1.9.0 : *Fork* First release of this fork. Integrates the bug-fix round described in "About this fork" above: sticky modifier state, maximize scaling, refresh pipeline rebuild (background fetch + EDT-safe updates + transport lock), Disable Screen sizing, sequence save/playback robustness, device-list staleness, keyboard input fixes, startup retry.
+- v1.10.0 : *Fork* Added an optional clickable TI-Nspire Touchpad faceplate (`--faceplate`): a scalable image of the calculator with every key mapped and the live handheld screen overlaid in its screen bezel.
 
 Future :
 - Mouse/pointer translation from the computer screen to the calculator (needs protocol investigation with a handheld)  

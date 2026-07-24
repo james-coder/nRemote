@@ -19,6 +19,7 @@ public class nRemote {
 
         boolean noScreenshots = false;
         boolean scan = false;
+        boolean faceplate = false;
 
         if (args.length > 0) {
             for (String str : args) {
@@ -29,6 +30,10 @@ public class nRemote {
                 if (str.equals("--screen-scan")) {
                     scan = true;
                     System.out.println("-------Screen scanning enabled-------");
+                }
+                if (str.equals("--faceplate")) {
+                    faceplate = true;
+                    System.out.println("-------Graphical faceplate enabled-------");
                 }
             }
         }
@@ -50,7 +55,7 @@ public class nRemote {
             java.util.logging.Logger.getLogger(NspireKeyboard.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
 
-        NspireKeyboard k = new NspireKeyboard(noScreenshots, scan);
+        NspireKeyboard k = new NspireKeyboard(noScreenshots, scan, faceplate);
         k.setVisible(true);
         while (true) {
             try {
