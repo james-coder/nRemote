@@ -1,17 +1,36 @@
 --------------------------
-nRemote v1.8.1a (October 8th, 2015)
+nRemote v1.9.0 (July 24th, 2026)
 --------------------------
-Authors : Adriweb, Levak
-Thanks to Jim Bauwens for some calc<->computer protocol ([en/de]code algorithms)
+Original authors : Adriweb, Levak  
+Thanks to Jim Bauwens for some calc<->computer protocol ([en/de]code algorithms)  
 http://tiplanet.org
 
 
-I   - About 
-II  - How to install 
-III - How to use 
-IV  - Known bugs 
-V   - Changelog 
-VI  - License 
+0   - About this fork  
+I   - About  
+II  - How to install  
+III - How to use  
+IV  - Known bugs  
+V   - Changelog  
+VI  - License  
+
+
+#0 - About this fork :
+---------------------
+This repository is a fork of the original [adriweb/nRemote](https://github.com/adriweb/nRemote) by Adriweb and Levak of [TI-Planet](http://tiplanet.org). The upstream project received its last commit in October 2015 — nearly 11 years ago now — and while it appears to no longer be actively maintained, it remains a genuinely clever piece of work that this fork owes everything to. All credit for the concept and the original implementation belongs to its authors; this fork simply picks up where it left off.
+
+Starting with v1.9.0, this fork integrates a substantial round of bug fixes (issue numbers refer to [this fork's issue tracker](https://github.com/james-coder/nRemote/issues?q=is%3Aissue)):
+
+* Sticky Shift/Ctrl modifier state that made dialog OK buttons intermittently unresponsive to the click key (issue 1)
+* Screen scaling that pushed the keypad out of view when the main window was maximized (issue 2)
+* A rebuilt screen-refresh pipeline: background fetching, thread-safe Swing updates, serialized NavNet transport access so keystrokes are no longer silently dropped mid-refresh, and a shorter poll interval (issues 3, 8, 10)
+* Window sizing when toggling "Disable Screen" (issue 4)
+* Sequence recording/playback robustness: saving via a file chooser with proper error reporting, playback off the UI thread (issues 5, 6)
+* Stale device-list handling when handhelds are swapped, and crash guards when a handheld drops mid-refresh (issues 7, 11)
+* Physical Tab key support and other keyboard-input cleanups (issues 9, 12)
+* A retry dialog at startup instead of exiting when the TI software isn't running yet (issue 13)
+
+Work that requires a connected handheld to investigate or verify (pointer/mouse translation, the historically dead exp() key, refresh-rate tuning) is tracked under the `needs-hardware` label.
 
 
 #I - About :
@@ -26,7 +45,7 @@ nRemote can be used for educational purpose in order to synchronise every studen
 ---------------------
 1. Install Java JRE 1.8 if your system doesn't have it already.
 2. You may have installed any 3.6/3.9 version of TI-Nspire Computer Software (Navigator or not, Teacher or Student does not matter) before using nRemote. This in fact restrains the usage of nRemote to PC and Mac users only. Linux users may find workarounds with WINE.
-3. Browse to the fodler where TI-Nspire family computer software is installed (for example in C:\Program Files (x86)\TI Education\TI-Nspire CAS Teacher Software\  ;  use "Show package Contents" on Mac)), and go inside where the Java files are ("Java" folder inside, probably).
+3. Browse to the folder where TI-Nspire family computer software is installed (for example in C:\Program Files (x86)\TI Education\TI-Nspire CAS Teacher Software\  ;  use "Show package Contents" on Mac)), and go inside where the Java files are ("Java" folder inside, probably).
 4. Copy and paste the file "nRemote.jar" there, with all the other TI .jar files.
 Note: It's possible that the software refuses to launch with that new file in there. If so, just launch the software first then put it there once it has opened correctly.
 
@@ -43,8 +62,8 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 #IV - Known Issues :
 -----------------
 * PC :  
-    Q1: nRemote is stuck on "FAILED TO INITIALIZE" and TI-Nspire Computer Software can't see my handhelds !  
-    A1: It appears you launched nRemote before launching TI-Nspire Computer Software. This leads to a strange behavior and can be resolved either by going to the Task Manager and killing java.exe/javaw.exe and TI-Nspire Computer Software, or by restarting Windows in extreme cases.  
+    Q1: nRemote can't connect and TI-Nspire Computer Software can't see my handhelds !  
+    A1: It appears you launched nRemote before launching TI-Nspire Computer Software. Since v1.9.0, nRemote offers a retry dialog: launch the TI software, then click Yes to retry. If the TI software itself got stuck, kill java.exe/javaw.exe and TI-Nspire Computer Software via the Task Manager (or restart Windows in extreme cases).  
 
 * Mac :  
     Q2: The GUI may look flat with red dots.  
@@ -52,11 +71,9 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 
 * General :  
     Q3: nRemote says (in its title) that one (or more) device is connected, but there is none.  
-    A3: Wait a little bit or use the refresh option in TI-Nspire Computer Software in order to manually remove or add handhelds from the global communication system. For example, the Navigator Wireless System has a window where you can see the connected devices. There, press the Refresh Button.  
+    A3: Largely fixed in v1.9.0 (the device list now refreshes on membership changes, not just count changes). If it still happens, use the refresh option in TI-Nspire Computer Software — the Navigator Wireless System has a window listing connected devices with a Refresh button.  
     Q4 : Some keys don't work.  
-    A4: Well, some keys like exp() don't work and we don't know yet how to solve that. It's not directly a bug related to nRemote.  
-    Q5 : Screen doesn't show in v1.8.0a  
-    A5: Indeed... Update to 1.8.1a.
+    A4: Some keys like exp() have never worked; the key-name table inside TI's software needs to be enumerated and verified against a real handheld. Tracked in this fork's issue 16 (`needs-hardware`).
 
 
 #V - Changelog :
@@ -77,13 +94,15 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 - v1.7.1c : *Public* Cleaned some prints, rebuilt (I hope) for 1.6, finally the changed version number in the window
 - v1.8.0a : *Public* Quickly made it compatible with 3.6/3.9 (not compatible with older versions anymore). Not tested on Windows. Real-time screen seems broken, not sure why.
 - v1.8.1a : *Public* Fixed Real-time screen (TI had encapsulated the screen object).
+- v1.9.0 : *Fork* First release of this fork. Integrates the bug-fix round described in "About this fork" above: sticky modifier state, maximize scaling, refresh pipeline rebuild (background fetch + EDT-safe updates + transport lock), Disable Screen sizing, sequence save/playback robustness, device-list staleness, keyboard input fixes, startup retry.
 
 Future :
-- Internal Sequence Editor  
-- Internet control (to allow some kind of remote internet assistance)  -  Could be done soon, maybe idk  
-- Getting keypresses from the handheld to the computer ?  -  Done in a tricky way.
+- Mouse/pointer translation from the computer screen to the calculator (needs protocol investigation with a handheld)  
+- Verifying the historically dead keys (exp() etc.) against a real handheld  
+- Refresh-rate measurement and tuning with a real handheld  
+- Internal Sequence Editor (upstream's idea, still a good one)  
 
 
 #VI - License :
 -------------
-WTFPL License ( http://sam.zoy.org/wtfpl/ ). But also thank us. And visit http://tiplanet.org :)
+WTFPL License ( http://sam.zoy.org/wtfpl/ ). But also thank the original authors. And visit http://tiplanet.org :)
