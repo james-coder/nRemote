@@ -66,6 +66,9 @@ public class NspireKeyboard extends javax.swing.JFrame {
         // Verified on-device (OS 3.6): the handheld ignores ~e_power_x~ even
         // though it is a valid protocol key name (its ctrl variant types ln).
         EXP.setToolTipText("The handheld's firmware ignores the remote e^x keystroke (TI limitation)");
+        // Verified on-device (OS 3.6): dialog buttons ignore the click key
+        // and are activated with Enter, exactly like on the physical handheld.
+        CLIC.setToolTipText("Touchpad click. Note: dialog buttons (OK/Cancel) need Enter, as on the handheld");
         STOP.setVisible(false);
         SCREEN.setIcon(new ImageIcon(Screen.generateLoadingScreen("LOADING ...")));
         this.noScreen.setSelected(noScreenshots);
