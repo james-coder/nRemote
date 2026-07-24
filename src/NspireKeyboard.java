@@ -82,10 +82,13 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         ImageIcon icn = new ImageIcon(getClass().getResource("nremote.png"));
         this.setIconImage(icn.getImage());
 
-        this.screenFrame.setVisible(true);
+        // In faceplate mode the faceplate is the whole UI (it embeds the
+        // screen), so the separate screen window and the text keyboard
+        // (hidden by nRemote.main) stay out of the way.
+        this.screenFrame.setVisible(!showFaceplate);
 
         if (showFaceplate) {
-            this.faceplateFrame = new FaceplateFrame(this);
+            this.faceplateFrame = new FaceplateFrame(this, true);
             this.faceplateFrame.setVisible(true);
         }
     }
