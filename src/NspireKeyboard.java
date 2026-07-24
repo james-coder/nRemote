@@ -2590,9 +2590,12 @@ public class NspireKeyboard extends javax.swing.JFrame {
 
     private void noScreenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_noScreenActionPerformed
         if (!noScreen.isSelected()) {
-            setSize(new Dimension(getWidth(), getHeight()));
+            // Give the screen area its height back; the next refresh repaints it.
+            setSize(new Dimension(getWidth(), getHeight() + SCREENlastheight));
             screenFrame.setVisible(true);
+            RefreshSreen();
         } else {
+            SCREEN.setIcon(null);
             setSize(new Dimension(getWidth(), getHeight() - SCREENlastheight));
             screenFrame.setVisible(false);
         }
