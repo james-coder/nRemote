@@ -52,18 +52,28 @@ public class nRemote {
 
         NspireKeyboard k = new NspireKeyboard(noScreenshots, scan);
         k.setVisible(true);
-        try {
-            Remote.Initialize();
-            if (scan) {
-                try {
-                    //ircHandler = new JavaIRC("TI-Nspire", "#tiplanet-admin", "bwns.be", 4237);
-                } catch (Exception e) {
-                    System.out.println(e.getMessage());
+        while (true) {
+            try {
+                Remote.Initialize();
+                break;
+            } catch (Exception e) {
+                // Let the user launch the TI software and retry instead of
+                // forcing an nRemote restart (README known issue Q1).
+                int choice = JOptionPane.showConfirmDialog(k,
+                        "Could not connect to the TI-Nspire software.\n"
+                                + "Launch a TI-Nspire Computer Software first (see readme), then click Yes to retry.",
+                        "nRemote", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
+                if (choice != JOptionPane.YES_OPTION) {
+                    System.exit(0);
                 }
             }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Error. Launch a Nspire Computer Software first (See readme)");
-            System.exit(0);
+        }
+        if (scan) {
+            try {
+                //ircHandler = new JavaIRC("TI-Nspire", "#tiplanet-admin", "bwns.be", 4237);
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
         }
         k.RefreshSreen();
 
