@@ -45,6 +45,9 @@ public class NspireKeyboard extends javax.swing.JFrame {
         this.deviceSelectionFrame = new DeviceSelectionFrame(this);
         this.screenFrame = new ScreenFrame(screenScan);
         initComponents();
+        // Swing normally consumes Tab for focus traversal before it reaches
+        // the key listener; disable that so Tab reaches the calculator.
+        setFocusTraversalKeysEnabled(false);
         STOP.setVisible(false);
         SCREEN.setIcon(new ImageIcon(Screen.generateLoadingScreen("LOADING ...")));
         this.noScreen.setSelected(noScreenshots);
@@ -2413,7 +2416,9 @@ public class NspireKeyboard extends javax.swing.JFrame {
             //System.out.println(KeyEvent.getKeyText(code));
             if (Ctrl_state) {
                 sendEvent(KeyEvent.getKeyText(code).toLowerCase());
-            } else {
+            } else if (evt.getKeyChar() != KeyEvent.CHAR_UNDEFINED && !evt.isActionKey()) {
+                // Keys without a character mapping (function keys, etc.) would
+                // otherwise send the CHAR_UNDEFINED sentinel to the calculator.
                 sendEvent(Character.toString(evt.getKeyChar()));
             }
         }
