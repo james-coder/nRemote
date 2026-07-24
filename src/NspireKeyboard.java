@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * @author Levak && Adriweb
  */
-public class NspireKeyboard extends javax.swing.JFrame {
+public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel.Listener {
 
     /**
      * Creates new form NewJFrame
@@ -38,6 +38,7 @@ public class NspireKeyboard extends javax.swing.JFrame {
     private ConditionFrame conditionFrame = null;
     private SymbolsFrame symbolsFrame = null;
     private DeviceSelectionFrame deviceSelectionFrame = null;
+    private FaceplateFrame faceplateFrame = null;
     private boolean isRecording = false;
     private String currentSequence = "";
 
@@ -53,6 +54,10 @@ public class NspireKeyboard extends javax.swing.JFrame {
     private final AtomicBoolean refreshPending = new AtomicBoolean(false);
 
     public NspireKeyboard(boolean noScreenshots, boolean screenScan) {
+        this(noScreenshots, screenScan, false);
+    }
+
+    public NspireKeyboard(boolean noScreenshots, boolean screenScan, boolean showFaceplate) {
         this.trigFrame = new TrigFrame();
         this.piFrame = new PiFrame();
         this.symbolsFrame = new SymbolsFrame();
@@ -78,6 +83,48 @@ public class NspireKeyboard extends javax.swing.JFrame {
         this.setIconImage(icn.getImage());
 
         this.screenFrame.setVisible(true);
+
+        if (showFaceplate) {
+            this.faceplateFrame = new FaceplateFrame(this);
+            this.faceplateFrame.setVisible(true);
+        }
+    }
+
+    /**
+     * Dispatches a click from the graphical faceplate through the same
+     * modifier/record/refresh-aware paths the on-screen keyboard uses, so both
+     * interfaces behave identically. Action tokens: "KEY:<name>", "ARROW:<dir>",
+     * "CTRL", "SHIFT", "PALETTE:<trig|pi|sym>".
+     */
+    @Override
+    public void faceplateAction(String action) {
+        if (action.equals("CTRL")) {
+            CTRLActionPerformed(null);
+            return;
+        }
+        if (action.equals("SHIFT")) {
+            SHIFTActionPerformed(null);
+            return;
+        }
+        int colon = action.indexOf(':');
+        if (colon < 0) {
+            return;
+        }
+        String type = action.substring(0, colon);
+        String payload = action.substring(colon + 1);
+        if (type.equals("KEY")) {
+            sendEvent(payload);
+        } else if (type.equals("ARROW")) {
+            sendArrowKey(payload);
+        } else if (type.equals("PALETTE")) {
+            if (payload.equals("trig")) {
+                this.trigFrame.setVisible(true);
+            } else if (payload.equals("pi")) {
+                this.piFrame.setVisible(true);
+            } else if (payload.equals("sym")) {
+                this.symbolsFrame.setVisible(true);
+            }
+        }
     }
 
     private class MyDragDropListener implements DropTargetListener {
@@ -2250,7 +2297,7 @@ public class NspireKeyboard extends javax.swing.JFrame {
 
         tiplanet.setForeground(new java.awt.Color(255, 255, 255));
         tiplanet.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.9.0 (fork)");
+        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.10.0 (fork)");
         tiplanet.setFocusable(false);
         bottom.add(tiplanet);
 
@@ -2782,6 +2829,12 @@ public class NspireKeyboard extends javax.swing.JFrame {
             // Transient fetch failure (or screen disabled): keep the last
             // good frame instead of blanking the display.
             return;
+        }
+        if (faceplateFrame != null) {
+            Image im = icn.getImage();
+            if (im instanceof BufferedImage) {
+                faceplateFrame.setScreenImage((BufferedImage) im);
+            }
         }
         this.screenFrame.setScreenImage(icn);
         //setVisible(true);
