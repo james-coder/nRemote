@@ -118,7 +118,10 @@ public class Remote {
 
     public static void sendEvent(String keyStr, INodeID nodeID) throws Exception {
         NodeHandle hdl = nncp.getHandle(nodeID);
-        sendEventToNode(hdl, new NspireVirtualKeyStroke(keyStr));
+        int status = sendEventToNode(hdl, new NspireVirtualKeyStroke(keyStr));
+        if (status != 1) {
+            System.err.println("nRemote: key '" + keyStr + "' was not delivered (status " + status + ")");
+        }
     }
 
     public static void sendEvent(String keyStr) throws Exception {
@@ -129,7 +132,10 @@ public class Remote {
         }
         for (INodeID nodeID : theCalcs) {
             hdl = nncp.getHandle(nodeID);
-            sendEventToNode(hdl, new NspireVirtualKeyStroke(keyStr));
+            int status = sendEventToNode(hdl, new NspireVirtualKeyStroke(keyStr));
+            if (status != 1) {
+                System.err.println("nRemote: key '" + keyStr + "' was not delivered (status " + status + ")");
+            }
             // sleep needed ? I don't have enough calcs to test a classroom setup....
         }
     }
@@ -163,6 +169,9 @@ public class Remote {
                         NavNet.disconnect(ch);
                     }
                 }
+            } else {
+                // NspireVirtualKeyStroke did not recognize the key name.
+                System.err.println("nRemote: no keycode for this event (unsupported key name?)");
             }
         }
         return status;
@@ -189,7 +198,10 @@ public class Remote {
         }
         for (INodeID nodeID : theCalcs) {
             hdl = nncp.getHandle(nodeID);
-            sendKeyBytesToNode(hdl, keyBytesCode);
+            int status = sendKeyBytesToNode(hdl, keyBytesCode);
+            if (status != 1) {
+                System.err.println("nRemote: key bytes were not delivered (status " + status + ")");
+            }
             // sleep needed ? I don't have enough calcs to test a classroom setup....
         }
     }
