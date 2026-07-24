@@ -244,12 +244,16 @@ public class DeviceSelectionFrame extends javax.swing.JFrame {
                 }
             }
             if (!isPresent) {
+                // getDeviceInfo returns null when the handheld drops mid-refresh
                 INodeInfo info = Remote.getDeviceInfo(tab[j]);
+                String name = (info != null) ? info.getName() : "(unavailable)";
+                String version = (info != null && info.getNodeSWVersionsInfo() != null)
+                        ? info.getNodeSWVersionsInfo().getVersion() : "?";
                 model.addRow(new Object[]{
                         true,
-                        info.getName(),
+                        name,
                         new CalcItem(tab[j]),
-                        info.getNodeSWVersionsInfo().getVersion()
+                        version
                 });
             }
         }
