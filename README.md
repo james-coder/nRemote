@@ -73,7 +73,13 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
     Q3: nRemote says (in its title) that one (or more) device is connected, but there is none.  
     A3: Largely fixed in v1.9.0 (the device list now refreshes on membership changes, not just count changes). If it still happens, use the refresh option in TI-Nspire Computer Software — the Navigator Wireless System has a window listing connected devices with a Refresh button.  
     Q4 : Some keys don't work.  
-    A4: Some keys like exp() have never worked; the key-name table inside TI's software needs to be enumerated and verified against a real handheld. Tracked in this fork's issue 16 (`needs-hardware`).
+    A4: Investigated against TI's key table and verified on a real handheld (OS 3.6) in v1.9.0:  
+      - The 10^x button silently sent an invalid key name (`~10_power_x~` instead of TI's `~ten_power_x~`) — fixed and verified working.  
+      - Shift+click sent the invalid `~shift_hold_click~` — now sends TI's `~shift_grab~`.  
+      - e^x (`~e_power_x~`) is a valid protocol name but the handheld's firmware ignores it (its ctrl variant types ln) — a TI limitation nRemote cannot work around.  
+      - The `!`, `$`, `\` and `%` symbol-palette buttons never had a keycode in TI's protocol; they are now disabled with an explanatory tooltip.  
+    Q5 : Clicking OK in a dialog on the handheld via the click button does nothing.  
+    A5: Verified on-device: the handheld itself ignores the touchpad-click key for dialog buttons — this is TI firmware behavior, not an nRemote bug. Use Enter to activate dialog buttons, exactly as on the physical handheld.
 
 
 #V - Changelog :

@@ -248,7 +248,7 @@ public class DeviceSelectionFrame extends javax.swing.JFrame {
                 INodeInfo info = Remote.getDeviceInfo(tab[j]);
                 String name = (info != null) ? info.getName() : "(unavailable)";
                 String version = (info != null && info.getNodeSWVersionsInfo() != null)
-                        ? info.getNodeSWVersionsInfo().getVersion() : "?";
+                        ? String.valueOf(info.getNodeSWVersionsInfo().getVersion()) : "?";
                 model.addRow(new Object[]{
                         true,
                         name,
