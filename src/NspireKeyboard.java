@@ -2406,7 +2406,7 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
 
         tiplanet.setForeground(new java.awt.Color(255, 255, 255));
         tiplanet.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.10.1 (fork)");
+        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.10.2 (fork)");
         tiplanet.setFocusable(false);
         bottom.add(tiplanet);
 
