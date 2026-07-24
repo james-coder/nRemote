@@ -22,7 +22,7 @@ import java.io.File;
 public class Remote {
 
     static NavNetCommProxy nncp = null;
-    static INodeID[] theCalcs = null;
+    static volatile INodeID[] theCalcs = null;
 
     // Serializes all NavNet transport use: a key send that collides with a
     // concurrent screen grab would otherwise fail to connect and be dropped.
@@ -46,13 +46,46 @@ public class Remote {
     }
 
     public static void connect() throws Exception {
-        int numberOfCalcs = getNumberOfDevices();
-        System.out.println(numberOfCalcs + " device(s) connected");
-        theCalcs = nncp.getConnectedNodes();
+        refreshNodes();
+        System.out.println(getNumberOfDevices() + " device(s) connected");
+    }
+
+    /**
+     * Re-reads the connected node list from NavNet and returns true when the
+     * membership changed (not merely the count: swapping one handheld for
+     * another used to go unnoticed and left stale node handles behind).
+     */
+    public static boolean refreshNodes() {
+        if (nncp == null) {
+            return false;
+        }
+        INodeID[] fresh = nncp.getConnectedNodes();
+        if (fresh == null) {
+            fresh = new INodeID[0];
+        }
+        INodeID[] old = theCalcs;
+        theCalcs = fresh;
+        if (old == null || old.length != fresh.length) {
+            return true;
+        }
+        for (int i = 0; i < fresh.length; i++) {
+            boolean present = false;
+            for (int j = 0; j < old.length; j++) {
+                if (old[j].equals(fresh[i])) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static int getNumberOfDevices() {
-        return (nncp != null) ? nncp.getConnectedNodes().length : 0;
+        INodeID[] calcs = theCalcs;
+        return (calcs != null) ? calcs.length : 0;
     }
 
     static INodeInfo getDeviceInfo(INodeID nodeID) {
