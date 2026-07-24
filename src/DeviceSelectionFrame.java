@@ -221,7 +221,9 @@ public class DeviceSelectionFrame extends javax.swing.JFrame {
     public void updateItems() {
         INodeID[] tab = Remote.theCalcs;
         DefaultTableModel model = (DefaultTableModel) this.DeviceList.getModel();
-        for (int i = 0; i < model.getRowCount(); i++) {
+        // Iterate backwards: removing a row shifts the ones below it up, so a
+        // forward loop would skip the row that moves into the freed slot.
+        for (int i = model.getRowCount() - 1; i >= 0; i--) {
             boolean isPresent = false;
             for (int j = 0; j < tab.length; j++) {
                 if (((CalcItem) model.getValueAt(i, 2)).nodeID.equals(tab[j])) {
