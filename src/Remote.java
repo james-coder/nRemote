@@ -24,6 +24,10 @@ public class Remote {
     static NavNetCommProxy nncp = null;
     static INodeID[] theCalcs = null;
 
+    // Serializes all NavNet transport use: a key send that collides with a
+    // concurrent screen grab would otherwise fail to connect and be dropped.
+    private static final Object NAVNET_LOCK = new Object();
+
     static File tmpDir;
 
     static {
@@ -62,7 +66,9 @@ public class Remote {
     static BufferedImage getScreen(INodeID nodeID) {
         Object screen = null;
         try {
-            screen = nncp.getScreen(nodeID, true);
+            synchronized (NAVNET_LOCK) {
+                screen = nncp.getScreen(nodeID, true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -109,18 +115,20 @@ public class Remote {
             byte[] keyBytesCode = key.getKeyCode();
 
             if (keyBytesCode != null) {
-                ConnectionHandle ch = new ConnectionHandle();
-                status = NavNet.connect(calcHandle, 16450, ch);
-
-                if (status == 1) {
-                    status = NavNet.write(ch, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND.length);
+                synchronized (NAVNET_LOCK) {
+                    ConnectionHandle ch = new ConnectionHandle();
+                    status = NavNet.connect(calcHandle, 16450, ch);
 
                     if (status == 1) {
-                        byte[] keyEvent = {0, 0, 0, 0, (byte) (key.getEventType() & 0xFF), 2, (byte) (keyBytesCode[0] & 0xFF), 0, (byte) (keyBytesCode[1] & 0xFF), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte) (keyBytesCode[2] & 0xFF), 0};
-                        status = NavNet.write(ch, keyEvent, keyEvent.length);
-                        Thread.sleep(80L);
+                        status = NavNet.write(ch, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND.length);
+
+                        if (status == 1) {
+                            byte[] keyEvent = {0, 0, 0, 0, (byte) (key.getEventType() & 0xFF), 2, (byte) (keyBytesCode[0] & 0xFF), 0, (byte) (keyBytesCode[1] & 0xFF), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte) (keyBytesCode[2] & 0xFF), 0};
+                            status = NavNet.write(ch, keyEvent, keyEvent.length);
+                            Thread.sleep(80L);
+                        }
+                        NavNet.disconnect(ch);
                     }
-                    NavNet.disconnect(ch);
                 }
             }
         }
@@ -158,18 +166,20 @@ public class Remote {
         int status = 0;
         if (calcHandle != null) {
             if (keyBytesCode != null) {
-                ConnectionHandle ch = new ConnectionHandle();
-                status = NavNet.connect(calcHandle, 16450, ch);
-
-                if (status == 1) {
-                    status = NavNet.write(ch, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND.length);
+                synchronized (NAVNET_LOCK) {
+                    ConnectionHandle ch = new ConnectionHandle();
+                    status = NavNet.connect(calcHandle, 16450, ch);
 
                     if (status == 1) {
-                        byte[] keyEvent = {0, 0, 0, 0, 8, 2, (byte) (keyBytesCode[0] & 0xFF), 0, (byte) (keyBytesCode[1] & 0xFF), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte) (keyBytesCode[2] & 0xFF), 0};
-                        status = NavNet.write(ch, keyEvent, keyEvent.length);
-                        Thread.sleep(85L);
+                        status = NavNet.write(ch, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND, NspireVirtualKeyStroke.VIRTUAL_KEY_STROKE_EVENT_COMMAND.length);
+
+                        if (status == 1) {
+                            byte[] keyEvent = {0, 0, 0, 0, 8, 2, (byte) (keyBytesCode[0] & 0xFF), 0, (byte) (keyBytesCode[1] & 0xFF), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte) (keyBytesCode[2] & 0xFF), 0};
+                            status = NavNet.write(ch, keyEvent, keyEvent.length);
+                            Thread.sleep(85L);
+                        }
+                        NavNet.disconnect(ch);
                     }
-                    NavNet.disconnect(ch);
                 }
             }
         }
