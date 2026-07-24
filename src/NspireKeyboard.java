@@ -2536,52 +2536,66 @@ public class NspireKeyboard extends javax.swing.JFrame {
         int returnVal = fd.showOpenDialog(null);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             String fileName = fd.getSelectedFile().getPath();
+
+            final java.util.List<String> lines = new java.util.ArrayList<String>();
             BufferedReader br = null;
             try {
                 br = new BufferedReader(new FileReader(fileName));
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-
-            LineNumberReader lnr = null;
-            try {
-                lnr = new LineNumberReader(new FileReader(fileName));
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-            try {
-                lnr.skip(Long.MAX_VALUE);
-            } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            }
-            int nbr = lnr.getLineNumber();
-
-            if (nbr > 50) {
-                JDialog.setDefaultLookAndFeelDecorated(true);
-                int response = JOptionPane.showConfirmDialog(null, "This file has " + nbr + " instructions. Are you sure you want to continue ?", "nRemote - Sequence Launcher",
-                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-                if (response == JOptionPane.NO_OPTION) {
-                    return;
-                } else if (response == JOptionPane.YES_OPTION) {
-                    System.out.println("Sequenced inited");
-                } else if (response == JOptionPane.CLOSED_OPTION) {
-                    return;
-                }
-            }
-
-            String line;
-            try {
+                String line;
                 while ((line = br.readLine()) != null) {
-                    Thread.sleep(20L);
-                    if (line.startsWith("~")) {
-                        Remote.sendEvent(line);
-                    } else {
-                        Remote.sendString(line);
+                    lines.add(line);
+                }
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this,
+                        "Could not read the sequence:\n" + e.getMessage(),
+                        "nRemote - Sequence Launcher", JOptionPane.ERROR_MESSAGE);
+                return;
+            } finally {
+                if (br != null) {
+                    try {
+                        br.close();
+                    } catch (IOException ignored) {
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
+
+            if (lines.size() > 50) {
+                JDialog.setDefaultLookAndFeelDecorated(true);
+                int response = JOptionPane.showConfirmDialog(null, "This file has " + lines.size() + " instructions. Are you sure you want to continue ?", "nRemote - Sequence Launcher",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+                if (response != JOptionPane.YES_OPTION) {
+                    return;
+                }
+                System.out.println("Sequenced inited");
+            }
+
+            // Play back off the EDT: each line costs a 20 ms pause plus the
+            // per-key transport delay, which used to freeze the whole GUI.
+            LOAD.setEnabled(false);
+            Thread player = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        for (String line : lines) {
+                            Thread.sleep(20L);
+                            if (line.startsWith("~")) {
+                                Remote.sendEvent(line);
+                            } else {
+                                Remote.sendString(line);
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run() {
+                                LOAD.setEnabled(true);
+                            }
+                        });
+                    }
+                }
+            }, "nRemote-sequence-player");
+            player.setDaemon(true);
+            player.start();
         }
     }//GEN-LAST:event_LOADActionPerformed
 
