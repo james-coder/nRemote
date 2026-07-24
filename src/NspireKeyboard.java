@@ -2647,6 +2647,7 @@ public class NspireKeyboard extends javax.swing.JFrame {
                 }
             }
         } catch (Exception e) {
+            System.err.println("nRemote: failed to send '" + keyStr + "': " + e);
         }
 
         // Single consumption point: every keystroke uses up both modifiers,
