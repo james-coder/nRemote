@@ -27,8 +27,13 @@ public class FaceplatePanel extends JPanel {
     }
 
     private static final int REF_W = 1536, REF_H = 1024;
-    // Screen bezel in reference pixels: {x1, y1, x2, y2}
-    private static final int[] SCREEN = {553, 105, 982, 400};
+    // The drawn LCD area in reference pixels: {x1, y1, x2, y2}. Measured from the
+    // faceplate's own screen graphic (aspect ~1.52, wider than the calc's 4:3).
+    private static final int[] SCREEN = {538, 104, 984, 397};
+    // Fill colour for the LCD area so the faceplate's built-in screen picture is
+    // hidden; the live 4:3 screen is centred on top, leaving clean margins that
+    // blend with the calculator's off-white display instead of a second image.
+    private static final Color LCD_BG = new Color(0xEB, 0xF1, 0xE4);
 
     private final Image faceplate;
     private BufferedImage screenImage;
@@ -228,6 +233,10 @@ public class FaceplatePanel extends JPanel {
             int sy = (int) Math.round(oy + SCREEN[1] * s);
             int sw = (int) Math.round((SCREEN[2] - SCREEN[0]) * s);
             int sh = (int) Math.round((SCREEN[3] - SCREEN[1]) * s);
+            // Cover the faceplate's built-in screen graphic first…
+            g2.setColor(LCD_BG);
+            g2.fillRect(sx, sy, sw, sh);
+            // …then draw the live screen centred, aspect ratio preserved.
             double r = Math.min(sw / (double) screenImage.getWidth(),
                                 sh / (double) screenImage.getHeight());
             int iw = (int) Math.round(screenImage.getWidth() * r);
