@@ -1,4 +1,5 @@
 import com.ti.et.education.commproxy.INodeID;
+import com.ti.et.education.commproxy.INodeInfo;
 
 /**
  * @author Levak
@@ -9,7 +10,9 @@ class CalcItem {
 
     public CalcItem(INodeID nodeID) {
         this.nodeID = nodeID;
-        this.SID = Remote.getDeviceInfo(nodeID).getSerialNumber();
+        // getDeviceInfo returns null when the handheld drops mid-refresh
+        INodeInfo info = Remote.getDeviceInfo(nodeID);
+        this.SID = (info != null) ? info.getSerialNumber() : "unknown";
     }
 
     @Override
