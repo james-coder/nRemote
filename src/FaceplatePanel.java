@@ -22,6 +22,8 @@ public class FaceplatePanel extends JPanel {
 
     public interface Listener {
         void faceplateAction(String action);
+        /** A physical key press while the faceplate has focus, to type on the calc. */
+        void faceplateKeyPressed(java.awt.event.KeyEvent e);
     }
 
     private static final int REF_W = 1536, REF_H = 1024;
@@ -51,9 +53,14 @@ public class FaceplatePanel extends JPanel {
         setBackground(new Color(28, 28, 30));
         setPreferredSize(new Dimension(REF_W / 2, REF_H / 2));
         setMinimumSize(new Dimension(REF_W / 4, REF_H / 4));
+        // Receive physical keystrokes; keep Tab out of focus traversal so it
+        // reaches the calculator like the other keys.
+        setFocusable(true);
+        setFocusTraversalKeysEnabled(false);
         defineButtons();
         MouseAdapter ma = new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
+                requestFocusInWindow(); // keep keyboard focus on the faceplate
                 Btn b = at(e.getX(), e.getY());
                 if (b != null && listener != null) {
                     listener.faceplateAction(b.action);
@@ -74,6 +81,18 @@ public class FaceplatePanel extends JPanel {
         };
         addMouseListener(ma);
         addMouseMotionListener(ma);
+        addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (listener != null) {
+                    listener.faceplateKeyPressed(e);
+                }
+            }
+        });
+    }
+
+    /** Grabs keyboard focus so physical typing goes to the calculator. */
+    public void focusForKeys() {
+        requestFocusInWindow();
     }
 
     public void setListener(Listener l) {

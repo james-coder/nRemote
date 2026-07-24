@@ -94,7 +94,18 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
             // Keep drag-and-drop .tns file transfer working in faceplate mode.
             new DropTarget(this.faceplateFrame, new MyDragDropListener());
             this.faceplateFrame.setVisible(true);
+            this.faceplateFrame.focusForKeys();
         }
+    }
+
+    /**
+     * A physical key press from the faceplate window. Reuses the same handler
+     * as the classic keyboard so A→a, 1→1, Enter, arrows, Ctrl/Shift, etc. all
+     * type on the calculator identically.
+     */
+    @Override
+    public void faceplateKeyPressed(java.awt.event.KeyEvent e) {
+        fromKeyPressed(e);
     }
 
     /**
@@ -180,6 +191,11 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         });
         bar.add(devices);
 
+        // Control-bar widgets are mouse-only: keeping them out of the focus
+        // cycle lets the faceplate retain keyboard focus for physical typing.
+        for (java.awt.Component c : bar.getComponents()) {
+            c.setFocusable(false);
+        }
         return bar;
     }
 

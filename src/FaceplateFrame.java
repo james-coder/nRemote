@@ -38,7 +38,18 @@ public class FaceplateFrame extends javax.swing.JFrame {
         ImageIcon icn = new ImageIcon(getClass().getResource("nremote.png"));
         setIconImage(icn.getImage());
         setDefaultCloseOperation(primary ? WindowConstants.EXIT_ON_CLOSE : WindowConstants.HIDE_ON_CLOSE);
+        // Whenever this window is focused, keep keyboard focus on the faceplate
+        // (not the control-bar buttons) so physical typing reaches the calc.
+        addWindowFocusListener(new java.awt.event.WindowAdapter() {
+            public void windowGainedFocus(java.awt.event.WindowEvent e) {
+                panel.focusForKeys();
+            }
+        });
         pack();
+    }
+
+    public void focusForKeys() {
+        panel.focusForKeys();
     }
 
     public void setScreenImage(BufferedImage img) {
