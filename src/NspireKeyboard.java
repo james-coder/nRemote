@@ -226,30 +226,36 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
     public void faceplateAction(String action) {
         if (action.equals("CTRL")) {
             CTRLActionPerformed(null);
-            return;
-        }
-        if (action.equals("SHIFT")) {
+        } else if (action.equals("SHIFT")) {
             SHIFTActionPerformed(null);
-            return;
-        }
-        int colon = action.indexOf(':');
-        if (colon < 0) {
-            return;
-        }
-        String type = action.substring(0, colon);
-        String payload = action.substring(colon + 1);
-        if (type.equals("KEY")) {
-            sendEvent(payload);
-        } else if (type.equals("ARROW")) {
-            sendArrowKey(payload);
-        } else if (type.equals("PALETTE")) {
-            if (payload.equals("trig")) {
-                this.trigFrame.setVisible(true);
-            } else if (payload.equals("pi")) {
-                this.piFrame.setVisible(true);
-            } else if (payload.equals("sym")) {
-                this.symbolsFrame.setVisible(true);
+        } else {
+            int colon = action.indexOf(':');
+            if (colon >= 0) {
+                String type = action.substring(0, colon);
+                String payload = action.substring(colon + 1);
+                if (type.equals("KEY")) {
+                    sendEvent(payload);
+                } else if (type.equals("ARROW")) {
+                    sendArrowKey(payload);
+                } else if (type.equals("PALETTE")) {
+                    if (payload.equals("trig")) {
+                        this.trigFrame.setVisible(true);
+                    } else if (payload.equals("pi")) {
+                        this.piFrame.setVisible(true);
+                    } else if (payload.equals("sym")) {
+                        this.symbolsFrame.setVisible(true);
+                    }
+                }
             }
+        }
+        // Reflect the sticky ctrl/shift state on the faceplate (arm or clear).
+        syncFaceplateModifiers();
+    }
+
+    /** Pushes the current sticky ctrl/shift state to the faceplate highlight. */
+    private void syncFaceplateModifiers() {
+        if (faceplateFrame != null) {
+            faceplateFrame.setArmedModifiers(Ctrl_state, Shift_state);
         }
     }
 
@@ -2618,6 +2624,9 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
                 sendEvent(Character.toString(evt.getKeyChar()));
             }
         }
+        // Keep the faceplate's sticky ctrl/shift highlight in sync after a
+        // physical key may have consumed an armed modifier.
+        syncFaceplateModifiers();
     }//GEN-LAST:event_fromKeyPressed
 
     private void ALPHA_RETURNActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ALPHA_RETURNActionPerformed

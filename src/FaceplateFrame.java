@@ -55,4 +55,8 @@ public class FaceplateFrame extends javax.swing.JFrame {
     public void setScreenImage(BufferedImage img) {
         panel.setScreenImage(img);
     }
+
+    public void setArmedModifiers(boolean ctrl, boolean shift) {
+        panel.setArmedModifiers(ctrl, shift);
+    }
 }

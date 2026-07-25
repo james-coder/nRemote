@@ -125,6 +125,8 @@ jar cfm nRemote.jar src/META-INF/MANIFEST.MF -C build .
 <details>
 <summary>Full version history</summary>
 
+- **v1.13.0** (Fork). Sticky ctrl and shift on the faceplate: clicking either arms it (shown with a green highlight) so it applies to the next key, then clears, matching the handheld's modifier behaviour and typical emulator front-ends.
+- **v1.12.0** (Fork). Releases are the single download source, published automatically from the `VERSION` file. Added a calculator-free CI test for the faceplate and an on-device test harness.
 - **v1.11.0** (Fork). Faceplate accuracy pass: two-per-row science and operator keys with their legends, the minus key, the undo symbol above esc, del's backspace arrow, and grey `EE` / `pi` / `,` / `?!` / flag / return keys with the flag key corrected. Added a build workflow, CI stubs, and a startup icon and launcher.
 - **v1.10.2** (Fork). Faceplate live screen no longer double-exposes with the built-in screen graphic (the LCD is painted first, then the 4:3 screen is centred).
 - **v1.10.1** (Fork). The touchpad center-click (and the CLIC button) now selects or activates the highlighted item. It is sent as Enter, since the handheld ignores the remote `~click~`.

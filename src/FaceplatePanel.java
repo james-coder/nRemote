@@ -40,6 +40,9 @@ public class FaceplatePanel extends JPanel {
     private Listener listener;
     private final List<Btn> buttons = new ArrayList<Btn>();
     private Btn hover;
+    // Sticky modifiers: ctrl / shift stay "armed" (highlighted) until the next
+    // key consumes them, matching the handheld and typical emulator front-ends.
+    private boolean armedCtrl, armedShift;
 
     private static final class Btn {
         final String action;
@@ -107,6 +110,15 @@ public class FaceplatePanel extends JPanel {
     public void setScreenImage(BufferedImage img) {
         this.screenImage = img;
         repaint();
+    }
+
+    /** Highlights the ctrl / shift keys while they are armed (sticky modifiers). */
+    public void setArmedModifiers(boolean ctrl, boolean shift) {
+        if (ctrl != armedCtrl || shift != armedShift) {
+            armedCtrl = ctrl;
+            armedShift = shift;
+            repaint();
+        }
     }
 
     private void add(String action, int x1, int y1, int x2, int y2) {
@@ -251,6 +263,23 @@ public class FaceplatePanel extends JPanel {
             int iw = (int) Math.round(screenImage.getWidth() * r);
             int ih = (int) Math.round(screenImage.getHeight() * r);
             g2.drawImage(screenImage, sx + (sw - iw) / 2, sy + (sh - ih) / 2, iw, ih, this);
+        }
+
+        // Armed sticky modifiers: a persistent green glow on ctrl / shift.
+        if (armedCtrl || armedShift) {
+            for (Btn b : buttons) {
+                if ((armedCtrl && "CTRL".equals(b.action)) || (armedShift && "SHIFT".equals(b.action))) {
+                    int hx = (int) Math.round(ox + b.x1 * s);
+                    int hy = (int) Math.round(oy + b.y1 * s);
+                    int hw = (int) Math.round((b.x2 - b.x1) * s);
+                    int hh = (int) Math.round((b.y2 - b.y1) * s);
+                    g2.setColor(new Color(40, 200, 120, 95));
+                    g2.fillRoundRect(hx, hy, hw, hh, 10, 10);
+                    g2.setStroke(new BasicStroke((float) Math.max(2.0, 3.0 * s)));
+                    g2.setColor(new Color(40, 220, 130, 235));
+                    g2.drawRoundRect(hx, hy, hw, hh, 10, 10);
+                }
+            }
         }
 
         if (hover != null) {
