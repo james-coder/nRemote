@@ -76,6 +76,10 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         // Verified on-device (OS 3.6): dialog buttons ignore the click key
         // and are activated with Enter, exactly like on the physical handheld.
         CLIC.setToolTipText("Touchpad center-click: selects/activates the highlighted item (sent as Enter; the remote ~click~ is ignored by the handheld)");
+        // ctrl/shift are sticky: click one to arm it for the next key, like the
+        // handheld itself and typical calculator emulator front-ends.
+        CTRL.setToolTipText("ctrl (sticky): click to arm, then the next key uses its ctrl / second function");
+        SHIFT.setToolTipText("shift (sticky): click to arm, then the next letter is capital and arrows select");
         STOP.setVisible(false);
         SCREEN.setIcon(new ImageIcon(Screen.generateLoadingScreen("LOADING ...")));
         this.noScreen.setSelected(noScreenshots);

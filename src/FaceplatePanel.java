@@ -66,6 +66,9 @@ public class FaceplatePanel extends JPanel {
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
         defineButtons();
+        // Hover over any key to see what it does; ctrl/shift explain that they
+        // are sticky. This makes the faceplate self-documenting.
+        javax.swing.ToolTipManager.sharedInstance().registerComponent(this);
         MouseAdapter ma = new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 requestFocusInWindow(); // keep keyboard focus on the faceplate
@@ -119,6 +122,66 @@ public class FaceplatePanel extends JPanel {
             armedShift = shift;
             repaint();
         }
+    }
+
+    /** Per-key hover tooltip, so the faceplate explains itself (ctrl/shift are sticky). */
+    @Override
+    public String getToolTipText(MouseEvent e) {
+        Btn b = at(e.getX(), e.getY());
+        return b == null ? null : describe(b.action);
+    }
+
+    /** Plain-language description of a button, shown as its hover tooltip. */
+    private static String describe(String action) {
+        if (action.equals("CTRL"))
+            return "ctrl (sticky): click to arm, then the next key uses its ctrl / second function. Green means armed.";
+        if (action.equals("SHIFT"))
+            return "shift (sticky): click to arm, then the next letter is capital and arrows select. Green means armed.";
+        if (action.equals("ARROW:click"))
+            return "Center click: select or activate the highlighted item (sent as Enter).";
+        if (action.equals("ARROW:up"))    return "Move up";
+        if (action.equals("ARROW:down"))  return "Move down";
+        if (action.equals("ARROW:left"))  return "Move left";
+        if (action.equals("ARROW:right")) return "Move right";
+        if (action.equals("PALETTE:trig")) return "Trig functions (opens a chooser)";
+        if (action.equals("PALETTE:pi"))   return "pi, theta, and related symbols (opens a chooser)";
+        if (action.equals("PALETTE:sym"))  return "Symbols and conditionals (opens a chooser)";
+        if (action.startsWith("KEY:")) {
+            String k = action.substring(4);
+            if (k.equals("~esc~"))         return "esc (back)";
+            if (k.equals("~home~"))        return "on / home";
+            if (k.equals("~ctrl_0~"))      return "Scratchpad";
+            if (k.equals("~ctrl_home~"))   return "doc (documents menu)";
+            if (k.equals("~tab~"))         return "tab";
+            if (k.equals("~menu~"))        return "menu";
+            if (k.equals("~var~"))         return "var (store to a variable)";
+            if (k.equals("~backspace~"))   return "del (backspace)";
+            if (k.equals("~square~"))      return "x squared";
+            if (k.equals("~e_power_x~"))   return "e to the x. The handheld firmware ignores this key over the remote link.";
+            if (k.equals("~ten_power_x~")) return "10 to the x";
+            if (k.equals("~neg~"))         return "Negative sign";
+            if (k.equals("~ctrl_*~"))      return "Math templates";
+            if (k.equals("~cat~"))         return "Catalog";
+            if (k.equals("~enter~"))       return "enter";
+            if (k.equals("~ee~"))          return "EE (times ten to a power)";
+            if (k.equals("~flag~"))        return "Flag / units menu";
+            if (k.equals("~newline~"))     return "Return (new line)";
+            if (k.equals("^"))             return "Power";
+            if (k.equals("*"))             return "Multiply";
+            if (k.equals("/"))             return "Divide";
+            if (k.equals("+"))             return "Add";
+            if (k.equals("-"))             return "Subtract";
+            if (k.equals("="))             return "Equals";
+            if (k.equals("("))             return "Open parenthesis";
+            if (k.equals(")"))             return "Close parenthesis";
+            if (k.equals("."))             return "Decimal point";
+            if (k.equals(","))             return "Comma";
+            if (k.equals(" "))             return "Space";
+            if (k.length() == 1 && Character.isLetter(k.charAt(0)))
+                return "Letter " + Character.toUpperCase(k.charAt(0));
+            return k; // digits and anything else: the key itself
+        }
+        return action;
     }
 
     private void add(String action, int x1, int y1, int x2, int y2) {

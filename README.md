@@ -23,6 +23,7 @@ Mirror its live screen, click an accurate on-screen faceplate, or just type on y
 - 🖥️ **Live screen mirroring.** See the handheld's display update as you work.
 - 🎛️ **Clickable faceplate.** An accurate picture of the TI-Nspire Touchpad; click any key. *(`--faceplate`)*
 - ⌨️ **Type on your keyboard.** A→A, 1→1, Enter, arrows, Ctrl/Shift, and the rest go straight to the calculator.
+- 🟢 **Sticky Ctrl and Shift.** Click a modifier to arm it for the next key (armed keys glow green on the faceplate), matching the handheld.
 - ⏺️ **Record and replay** key sequences to a file.
 - 📁 **Drag and drop** `.tns` files onto the window to transfer them.
 - 👥 **One or many** handhelds. Send to all connected devices, or a selected subset.
@@ -80,6 +81,10 @@ The handheld's screen is shown in real time, including menus, dialogs, and calcu
    java -jar nRemote.jar --faceplate
    ```
 
+**Sticky Ctrl and Shift.** On both the faceplate and the text keyboard, **ctrl** and **shift** are *sticky*: click one and it arms for the **next** key, then clears itself, exactly like pressing the modifier on the handheld. So `ctrl` then `esc` sends the handheld's ctrl-esc, and `shift` then `a` types a capital `A`. On the faceplate an armed modifier turns **green**. This is how most calculator emulator front-ends behave, so there is no key to hold down.
+
+**Hover to learn the keys.** On the faceplate, rest the pointer over any key to see a tooltip of what it does (the ctrl/shift tooltips also explain the sticky behaviour). A few keys that the handheld firmware ignores over the link, such as `e^x`, say so in their tooltip.
+
 **Desktop shortcut and icon (Windows).** Copy `nRemote.jar` and [`nremote.ico`](nremote.ico) into that TI Java or `lib` folder, then run [`launcher/Create-Desktop-Shortcut.ps1`](launcher/Create-Desktop-Shortcut.ps1). You can also drop [`launcher/nRemote.bat`](launcher/nRemote.bat) next to the jar and double-click it. Either way you get a *nRemote* shortcut with the app icon that launches through the TI-bundled Java. See [`launcher/README.md`](launcher/README.md).
 
 ---
@@ -125,6 +130,7 @@ jar cfm nRemote.jar src/META-INF/MANIFEST.MF -C build .
 <details>
 <summary>Full version history</summary>
 
+- **v1.14.0** (Fork). The faceplate is now self-documenting: hover any key for a tooltip of what it does, and the ctrl and shift keys explain that they are sticky. The text keyboard's ctrl and shift gained the same tooltips, and the sticky behaviour is now described in the readme's Usage section.
 - **v1.13.0** (Fork). Sticky ctrl and shift on the faceplate: clicking either arms it (shown with a green highlight) so it applies to the next key, then clears, matching the handheld's modifier behaviour and typical emulator front-ends.
 - **v1.12.0** (Fork). Releases are the single download source, published automatically from the `VERSION` file. Added a calculator-free CI test for the faceplate and an on-device test harness.
 - **v1.11.0** (Fork). Faceplate accuracy pass: two-per-row science and operator keys with their legends, the minus key, the undo symbol above esc, del's backspace arrow, and grey `EE` / `pi` / `,` / `?!` / flag / return keys with the flag key corrected. Added a build workflow, CI stubs, and a startup icon and launcher.
