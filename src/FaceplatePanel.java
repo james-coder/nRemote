@@ -132,11 +132,16 @@ public class FaceplatePanel extends JPanel {
         add("SHIFT",          646, 594, 720, 626);
         add("KEY:~var~",      818, 594, 888, 626);
         add("KEY:~backspace~",936, 594, 982, 626); // del
-        // Math column + number pad + operator column
-        add("PALETTE:trig",   558, 630, 632, 670);
-        add("KEY:~square~",   558, 672, 632, 710);
-        add("KEY:~e_power_x~",558, 712, 632, 750);
-        add("KEY:(",          558, 754, 632, 796);
+        // Science column — two keys per row (matches the handheld)
+        add("KEY:=",            544, 631, 592, 669);
+        add("PALETTE:trig",     598, 631, 646, 669);
+        add("KEY:^",            544, 672, 592, 710);
+        add("KEY:~square~",     598, 672, 646, 710);
+        add("KEY:~e_power_x~",  544, 712, 592, 750);
+        add("KEY:~ten_power_x~",598, 712, 646, 750);
+        add("KEY:(",            544, 755, 592, 793);
+        add("KEY:)",            598, 755, 646, 793);
+        // Number pad
         add("KEY:7", 650, 630, 718, 670);
         add("KEY:4", 650, 672, 718, 710);
         add("KEY:1", 650, 712, 718, 750);
@@ -149,10 +154,14 @@ public class FaceplatePanel extends JPanel {
         add("KEY:6", 816, 672, 884, 710);
         add("KEY:3", 816, 712, 884, 750);
         add("KEY:~neg~", 816, 754, 884, 796);
-        add("KEY:/", 904, 630, 978, 670);
-        add("KEY:*", 904, 672, 978, 710);
-        add("KEY:+", 904, 712, 978, 750);
-        add("KEY:~enter~", 904, 754, 978, 796);
+        // Operator column — templates/catalog, then two keys per row
+        add("KEY:~ctrl_*~", 890, 631, 934, 669);
+        add("KEY:~cat~",    942, 631, 986, 669);
+        add("KEY:*", 890, 672, 934, 710);
+        add("KEY:/", 942, 672, 986, 710);
+        add("KEY:+", 890, 712, 934, 750);
+        add("KEY:-", 942, 712, 986, 750);
+        add("KEY:~enter~", 889, 755, 987, 793);
         // Alpha keyboard, row A
         add("KEY:~ee~",    556, 824, 600, 862);
         add("KEY:a", 604, 824, 648, 862);
@@ -172,7 +181,7 @@ public class FaceplatePanel extends JPanel {
         add("KEY:l", 792, 862, 836, 900);
         add("KEY:m", 840, 862, 884, 900);
         add("KEY:n", 888, 862, 930, 900);
-        add("KEY:~backspace~", 938, 862, 980, 900);
+        add("KEY:~flag~", 938, 862, 980, 900);
         // Row C
         add("KEY:,",  556, 900, 600, 938);
         add("KEY:o", 604, 900, 648, 938);

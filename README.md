@@ -106,6 +106,7 @@ It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 - v1.10.0 : *Fork* Added an optional clickable TI-Nspire Touchpad faceplate (`--faceplate`): a scalable image of the calculator with every key mapped and the live handheld screen overlaid in its screen bezel. Also: physical-keyboard typing, a control bar (record/load/screen/device) and drag-drop in faceplate mode.
 - v1.10.1 : *Fork* The touchpad center-click (and CLIC button) now selects/activates the highlighted item — the handheld ignores the remote ~click~ keystroke, so it is sent as Enter (verified on-device).
 - v1.10.2 : *Fork* Faceplate: the live screen no longer double-exposes with the faceplate's built-in screen graphic — the LCD area is painted over first, then the real 4:3 screen is drawn centred with its aspect ratio preserved.
+- v1.11.0 : *Fork* Faceplate accuracy pass: the science and operator keys are now two-per-row with their secondary-function legends (=/trig, ^/x², eˣ/10ˣ, (/), ×/÷, +/−, catalog, templates), the minus key is present, the undo symbol sits above esc, del shows its backspace arrow, and the EE/π/,/?!/flag/return keys are grey with the flag key corrected. Added a build workflow and a startup icon/launcher.
 
 Future :
 - Mouse/pointer translation from the computer screen to the calculator (needs protocol investigation with a handheld)  
