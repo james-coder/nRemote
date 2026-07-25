@@ -58,6 +58,10 @@ Note: It's possible that the software refuses to launch with that new file in th
 For any platform, you may also try to launch it via terminal ("java -jar [path_to_the_folder]/nRemote.jar")
 It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
 
+**Desktop shortcut & icon (Windows):** copy `nRemote.jar` and `nremote.ico` into the TI software's Java/lib folder (with the other TI `.jar` files), then run `launcher/Create-Desktop-Shortcut.ps1` (or drop `launcher/nRemote.bat` next to the jar and double-click it). This makes a *nRemote* desktop shortcut with the app icon that launches it through the TI-bundled Java. See `launcher/README.md`.
+
+**Building from source:** the GitHub Actions workflow `.github/workflows/build.yml` compiles `nRemote.jar` on every push (against the signature-only stubs in `ci/stubs/`, since the TI NavNet libraries can't be redistributed) and uploads it as a build artifact; tagging a `v*` release attaches the jar to the release.
+
 **Graphical faceplate (v1.10.0):** launch with `--faceplate` (i.e. `java -jar nRemote.jar --faceplate`) to open a clickable picture of the TI-Nspire Touchpad instead of the text keyboard. Click a key to press it — modifiers, arrows/click, and the trig/π/symbols palettes behave exactly like the text keyboard — and the handheld's live screen is shown right in the faceplate's screen area. You can also just **type on your computer keyboard** (A→A, 1→1, Enter, arrows, Ctrl/Shift, Backspace, Tab, …) and it goes straight to the calculator. A control bar below the calculator holds the program functions that have no key on the device — sequence **Record/Stop** and **Load**, **Disable Screen**, **All/Selection** device targeting and **Devices…** — and you can still drag-and-drop `.tns` files onto the window to transfer them. It resizes freely and will drive the built-in emulator too, once that lands.
 
 
