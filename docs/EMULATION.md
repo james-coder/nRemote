@@ -1,33 +1,36 @@
-# Emulator backend — driving Firebird with the nRemote frontend
+# Emulator backend: driving Firebird with the nRemote frontend
 
-Status: **scaffolding (Java half working & tested)**. Tracking issue #19.
-Not merged to `master` — needs the Firebird-side bridge and an OS image to test end-to-end.
+Status: **Java frontend seam done and tested; Firebird-side bridge drafted.**
+Tracking issue #19. Not usable end to end yet: it still needs a `manuf` image to
+assemble a bootable flash, and the drafted bridge has to be built into Firebird.
 
 ## Goal
 
-Let the existing nRemote GUI control an emulated TI-Nspire ([Firebird](https://github.com/nspire-emus/firebird))
-instead of a physical handheld, by swapping only the backend that provides the
-two things the frontend needs: **grab the screen**, and **inject a key**.
+Let the existing nRemote GUI control an emulated TI-Nspire
+([Firebird](https://github.com/nspire-emus/firebird)) instead of a physical
+handheld, by swapping only the backend that provides the two things the frontend
+needs: **grab the screen**, and **inject a key**.
 
 ## Architecture
 
 ```
    NspireKeyboard (Swing GUI, unchanged)
-            │  getScreen / sendEvent / device list
-            ▼
-        Remote  ── emulatorMode? ──┐
-            │ no                   │ yes
-            ▼                      ▼
-     NavNet (real HW)      EmulatorBridge ──TCP──►  Firebird bridge patch
-                                                     (lcd_draw_frame / keypad_set_key)
+            |  getScreen / sendEvent / device list
+            v
+        Remote  --- emulatorMode? ---+
+            | no                      | yes
+            v                         v
+     NavNet (real HW)          EmulatorBridge --TCP--> Firebird bridge
+                                                       (lcd_draw_frame /
+                                                        keypad_set_key)
 ```
 
 `Remote` is now a small facade. When `emulatorMode` is false (the default) the
-NavNet path is byte-for-byte unchanged. When on, `getScreen`, both `sendEvent`
+NavNet path is byte for byte unchanged. When on, `getScreen`, both `sendEvent`
 overloads, `getDeviceInfo`, and `refreshNodes` route to the emulator instead.
 
 The GUI is **not modified**: in emulator mode `Remote` presents one synthetic
-device — an `INodeID` implementation (`Remote.EmulatorNodeID`, type
+device, an `INodeID` implementation (`Remote.EmulatorNodeID`, type
 `UNIT_NSPIRE = 30`, our device) plus a reflection `Proxy` for the 18-method
 `INodeInfo`. The device-table null-guards added in #11 already tolerate the
 Proxy returning `null` for the sub-info objects.
@@ -35,40 +38,49 @@ Proxy returning `null` for the sub-info objects.
 Select it at launch:
 
 ```
-java -jar nRemote.jar --emulator                 # 127.0.0.1:3334
+java -jar nRemote.jar --emulator                  # 127.0.0.1:3334
 java -jar nRemote.jar --emulator=192.168.0.5:3334 # remote host / custom port
 ```
 
-## Wire protocol (`EmulatorBridge` ⇄ Firebird bridge)
+## Wire protocol (EmulatorBridge to Firebird bridge)
 
 ASCII control lines; the image is length-prefixed binary. One socket, all access
 serialized (screen fetch runs on nRemote's fetch thread, keys on the EDT).
 
-| Client sends            | Server replies                         |
-|-------------------------|----------------------------------------|
-| `SHOT\n`                | `IMG <len>\n` then `<len>` PNG bytes   |
-| `KEY <nRemote-name>\n`  | `OK\n`                                 |
+| Client sends            | Server replies                        |
+|-------------------------|---------------------------------------|
+| `SHOT\n`                | `IMG <len>\n` then `<len>` PNG bytes  |
+| `KEY <nRemote-name>\n`  | `OK\n`                                |
 
-`<nRemote-name>` is nRemote's own key string (`~enter~`, `a`, `~click~`, …). The
-name→hardware mapping lives on the Firebird side, next to the keypad code.
+`<nRemote-name>` is nRemote's own key string exactly as it goes to NavNet: a bare
+char (`a`, `7`, `*`), a name (`~esc~`, `~enter~`), an uppercase letter meaning
+shift+letter (`A`), or a composite (`~ctrl_0~`, `~shift_enter~`). The decode from
+those to the keypad matrix lives on the Firebird side.
 
 The Java client (`src/EmulatorBridge.java`) is complete and tested against a mock
-bridge: `SHOT` round-trips a 320×240 frame byte-identically and keys are ACKed.
+bridge: `SHOT` round-trips a 320x240 frame byte-identically and keys are ACKed.
 
-## Firebird-side bridge (to build — external repo)
+## Firebird-side bridge (drafted in `firebird-bridge/`)
 
-A small patch adding a TCP server thread to Firebird, using its existing core API
-(confirmed in `core/lcd.h`, `core/keypad.h`):
+`firebird-bridge/nremote_bridge.c` is a reviewed draft of the server half, built
+on Firebird's real core API (`core/lcd.h`, `core/keypad.h`) and the exact key
+matrix from Firebird's `keymap.h`:
 
-- **`SHOT`** → `lcd_draw_frame(uint8_t *buffer)` (classic non-CX Nspire is
-  grayscale, 320×240) → encode as PNG → send.
-- **`KEY <name>`** → look the name up in an nRemote-name → keypad-matrix table,
-  then pulse it: `keypad_set_key(row, col, true)` / `…false`. `~click~` and the
-  arrows use the touchpad: `touchpad_set_state(x, y, contact, down)`. `~on~`
-  uses `keypad_on_pressed()`.
+- **`SHOT`** calls `lcd_draw_frame(uint8_t *buffer)` (classic non-CX Nspire is
+  4bpp grayscale, 320x240, 2 pixels per byte), expands it to 8-bit gray, and
+  encodes a PNG with zlib.
+- **`KEY <name>`** decodes the nRemote name (stripping `~`, handling the
+  `ctrl_` / `shift_` prefixes and bare uppercase letters), then pulses the
+  matrix with `keypad_set_key(row, col, true/false)`, holding a modifier around
+  it when needed. Arrows tap the touchpad via `touchpad_set_state(x, y, ...)`;
+  center-click already arrives as `~enter~`, so it needs no special case.
 
-Remaining piece: the **nRemote-name → (row,col) / touchpad** table for the
-Nspire keypad matrix (8 rows × 11 cols).
+What is verified here: the name-to-matrix decode is unit-tested against the
+`keymap.h` positions, and the PNG output decodes cleanly through Java's `ImageIO`
+(the same call `EmulatorBridge.getScreen()` makes). What is **not** verified: it
+has not been compiled into Firebird or run against a booted OS. See
+`firebird-bridge/README.md` for the integration steps and the handful of keys to
+re-check on a booted image.
 
 ## Booting an OS image
 
@@ -77,44 +89,47 @@ the OS, and a **manuf** image.
 
 The `.tno` is a ZIP container (a 63-byte text manifest header, then a standard
 ZIP). Verified against `TI_Nspire_3.6.0.550.tno` (the non-CX build for our
-handheld, from TI-Planet archive id 29558 — the exact OS `education.ti.com` no
+handheld, from TI-Planet archive id 29558, the exact OS `education.ti.com` no
 longer serves). It holds 7 members:
 
-| member          | size      | notes                                  |
-|-----------------|-----------|----------------------------------------|
-| `manifest.txt`  | 436 B     | version (`3.6.0` / boot2 `3.40.0`) + SHA-256 of each part |
-| `manifest.sig`  | 393 B     | manifest signature                     |
-| `manifest.cer`  | 1243 B    | manifest certificate                   |
-| `TI-Nspire.img` | 9.4 MB    | OS image (`"TI-Nspire"` header tag; body entropy 8.0 → packed/signed) |
-| `TI-Nspire.cer` | 1243 B    | OS certificate                         |
-| `boot2.img`     | 977 KB    | **boot2** (`"BOOT2"` header tag, 2011)  |
-| `boot2.cer`     | 817 B     | boot2 certificate                      |
+| member          | size   | notes                                                    |
+|-----------------|--------|----------------------------------------------------------|
+| `manifest.txt`  | 436 B  | version (`3.6.0` / boot2 `3.40.0`) + SHA-256 of each part |
+| `manifest.sig`  | 393 B  | manifest signature                                       |
+| `manifest.cer`  | 1243 B | manifest certificate                                     |
+| `TI-Nspire.img` | 9.4 MB | OS image (`"TI-Nspire"` header tag; body entropy 8.0)    |
+| `TI-Nspire.cer` | 1243 B | OS certificate                                           |
+| `boot2.img`     | 977 KB | **boot2** (`"BOOT2"` header tag, 2011)                   |
+| `boot2.cer`     | 817 B  | boot2 certificate                                        |
 
-So **boot2 and the OS both come from the `.tno`** — extract with any unzip tool
+So **boot2 and the OS both come from the `.tno`**; extract with any unzip tool
 (it tolerates the 63-byte prefix). That leaves only a **manuf** image (device
-identity/calibration) to source or synthesize before Firebird can assemble a
-bootable flash.
+identity and calibration) to source or synthesize before Firebird can assemble a
+bootable flash. This is the current blocker.
 
-Note on "decompile": the OS body is compressed/signed (entropy 8.0), so static
-disassembly of OS code from the image alone is not feasible. What *is* readable:
-the container, the boot2 image, all headers/versions, and the OS's internal
-`phoenix/…` resource path table (~1200 entries). Actual code RE happens by
-**booting the image in Firebird** and inspecting via its debugger/GDB stub.
+Note on "decompile": the OS body is compressed and signed (entropy 8.0), so
+static disassembly of OS code from the image alone is not feasible. What *is*
+readable: the container, the boot2 image, all headers and versions, and the OS's
+internal `phoenix/...` resource path table (~1200 entries). Actual code RE
+happens by **booting the image in Firebird** and inspecting via its debugger and
+GDB stub.
 
 ## Bonus: settles an open hardware question
 
-The emulator drives the **real keypad matrix / touchpad**, not TI's named
-virtual keystrokes. That lets us finally test whether a physical touchpad-click
-activates dialog OK buttons — the question from #17 that otherwise needed the
-physical calculator and a human finger — by sending `~click~` (→
-`touchpad_set_state`) with a dialog focused and comparing against `~enter~`.
+The emulator drives the **real keypad matrix and touchpad**, not TI's named
+virtual keystrokes. Once it boots, that lets us finally test whether a physical
+touchpad-click activates dialog OK buttons (the question from #17 that otherwise
+needed the physical calculator and a human finger) by sending a touchpad click
+with a dialog focused and comparing against `~enter~`.
 
 ## Checklist
 
 - [x] `EmulatorBridge` TCP client + wire protocol (tested vs. mock)
-- [x] `Remote` emulator seam (synthetic device, default-off) — compiles vs. real TI jars
+- [x] `Remote` emulator seam (synthetic device, default-off), compiles vs. real TI jars
 - [x] `--emulator[=host:port]` launch flag
 - [x] OS image acquired + container mapped; `boot2.img` + `TI-Nspire.img` extracted
-- [ ] Firebird TCP bridge patch + keypad-matrix name table
+- [x] Firebird-side bridge drafted (`firebird-bridge/`): keypad-matrix name table
+      + `SHOT`/`KEY` handlers; decode unit-tested, PNG validated by `ImageIO`
+- [ ] Build the bridge into Firebird; wire `bridge_lock` / `bridge_unlock` to its emu mutex
 - [ ] `manuf` image, then assemble a bootable flash in Firebird
-- [ ] End-to-end test: GUI drives the emulated screen + keys
+- [ ] End-to-end test: GUI drives the emulated screen and keys
