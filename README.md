@@ -60,11 +60,11 @@ The handheld's screen is shown in real time, including menus, dialogs, and calcu
 ## Requirements
 
 - **Java JRE 1.8 or newer.** The app itself targets Java 7, so it also runs on the JRE bundled with the TI software.
-- **TI-Nspire Computer Software or Computer Link, version 3.6 or 3.9** (Navigator or not, Teacher or Student; any of them work). That software provides the USB and wireless link, so nRemote runs on **PC and Mac** only. Linux users may find workarounds with WINE.
+- **TI-Nspire computer software to provide the USB and wireless link**, version 3.6 or 3.9 (Navigator or not, Teacher or Student; any of them work). The free **[TI-Nspire Computer Link Software](https://education.ti.com/en/software/details/en/82035809F7E6474099944056CCB01C20/ti-nspire_computerlink)** is the simplest option, offered as a *Computer Link Software for Windows (EXE)* or *for Macintosh (DMG)* download. Note that the Computer Link Software is not compatible with CX II models. Because that software is Windows and Mac only, nRemote is too, though Linux users may find workarounds with WINE.
 
 ## Install
 
-1. Install the TI-Nspire software above, if you do not already have it.
+1. Install the [TI-Nspire Computer Link Software](https://education.ti.com/en/software/details/en/82035809F7E6474099944056CCB01C20/ti-nspire_computerlink) (Windows EXE or Mac DMG), if you do not already have TI-Nspire software.
 2. Get `nRemote.jar`. You can download it from the [latest build](https://github.com/james-coder/nRemote/actions/workflows/build.yml) (see Artifacts), from a [release](https://github.com/james-coder/nRemote/releases), or from `out/artifacts/nRemote_noLibs/nRemote.jar` in this repo.
 3. Browse to the folder where the TI-Nspire software is installed (for example `C:\Program Files (x86)\TI Education\TI-Nspire ...\` on Windows, or use *Show Package Contents* on Mac) and go into its Java or `lib` folder, the one that holds the other TI `.jar` files.
 4. Copy **`nRemote.jar`** there, next to those TI `.jar` files.
