@@ -132,7 +132,7 @@ public class FaceplatePanel extends JPanel {
         add("SHIFT",          646, 594, 720, 626);
         add("KEY:~var~",      818, 594, 888, 626);
         add("KEY:~backspace~",936, 594, 982, 626); // del
-        // Science column — two keys per row (matches the handheld)
+        // Science column: two keys per row (matches the handheld)
         add("KEY:=",            544, 631, 592, 669);
         add("PALETTE:trig",     598, 631, 646, 669);
         add("KEY:^",            544, 672, 592, 710);
@@ -154,7 +154,7 @@ public class FaceplatePanel extends JPanel {
         add("KEY:6", 816, 672, 884, 710);
         add("KEY:3", 816, 712, 884, 750);
         add("KEY:~neg~", 816, 754, 884, 796);
-        // Operator column — templates/catalog, then two keys per row
+        // Operator column: templates/catalog, then two keys per row
         add("KEY:~ctrl_*~", 890, 631, 934, 669);
         add("KEY:~cat~",    942, 631, 986, 669);
         add("KEY:*", 890, 672, 934, 710);

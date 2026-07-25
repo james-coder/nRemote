@@ -4,11 +4,11 @@ An app icon (`nremote.ico`) and helpers so you can start nRemote from a
 desktop shortcut instead of a terminal.
 
 ## Files
-- **`../nremote.ico`** / `nremote.ico` — the Windows application icon (16–256 px).
-- **`nRemote.bat`** — double-click launcher. Put it in the same folder as
+- **`../nremote.ico`** / `nremote.ico`: the Windows application icon (16-256 px).
+- **`nRemote.bat`**: double-click launcher. Put it in the same folder as
   `nRemote.jar` (the TI-Nspire software's `lib` / `Java` folder). It uses the
   TI-bundled Java 7 JRE and sets the native-library path.
-- **`Create-Desktop-Shortcut.ps1`** — makes a Desktop shortcut named *nRemote*
+- **`Create-Desktop-Shortcut.ps1`**: makes a Desktop shortcut named *nRemote*
   with the icon, pointing at the TI JRE + `nRemote.jar`.
 
 ## Setup

@@ -75,7 +75,7 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         EXP.setToolTipText("The handheld's firmware ignores the remote e^x keystroke (TI limitation)");
         // Verified on-device (OS 3.6): dialog buttons ignore the click key
         // and are activated with Enter, exactly like on the physical handheld.
-        CLIC.setToolTipText("Touchpad center-click: selects/activates the highlighted item (sent as Enter — the remote ~click~ is ignored by the handheld)");
+        CLIC.setToolTipText("Touchpad center-click: selects/activates the highlighted item (sent as Enter; the remote ~click~ is ignored by the handheld)");
         STOP.setVisible(false);
         SCREEN.setIcon(new ImageIcon(Screen.generateLoadingScreen("LOADING ...")));
         this.noScreen.setSelected(noScreenshots);
@@ -109,8 +109,8 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
     }
 
     /**
-     * The program controls that have no key on the calculator image — sequence
-     * record/stop/load, Disable Screen, and device targeting — as a control bar
+     * The program controls that have no key on the calculator image (sequence
+     * record/stop/load, Disable Screen, and device targeting), shown as a control bar
      * shown under the faceplate. Each reuses the existing handler so behaviour
      * matches the classic keyboard window exactly.
      */
@@ -2810,7 +2810,7 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
         if (keyStr.equals("click")) {
             // The touchpad center-click selects/activates the highlighted item.
             // Verified on-device (OS 3.6): the remote ~click~ keystroke is
-            // ignored for this — it selects nothing on the home screen or in
+            // ignored for this: it selects nothing on the home screen or in
             // menus, and doesn't activate dialog buttons, even with a full
             // press+release. ~enter~ activates them exactly like the physical
             // center-click, so a plain center-click maps to enter.

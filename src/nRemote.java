@@ -56,7 +56,7 @@ public class nRemote {
         }
 
         NspireKeyboard k = new NspireKeyboard(noScreenshots, scan, faceplate);
-        // In faceplate mode the text keyboard stays hidden — the faceplate is
+        // In faceplate mode the text keyboard stays hidden; the faceplate is
         // the interface. It still runs as the controller behind the scenes.
         k.setVisible(!faceplate);
         while (true) {

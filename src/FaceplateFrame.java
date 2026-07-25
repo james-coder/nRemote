@@ -4,7 +4,7 @@ import java.awt.image.BufferedImage;
 /**
  * Window hosting the clickable {@link FaceplatePanel}. Keys are routed to the
  * given listener (NspireKeyboard), so the graphical faceplate drives the same
- * remote as the text keyboard — and, later, the emulator.
+ * remote as the text keyboard, and later the emulator.
  */
 public class FaceplateFrame extends javax.swing.JFrame {
 
@@ -34,7 +34,7 @@ public class FaceplateFrame extends javax.swing.JFrame {
         if (controls != null) {
             getContentPane().add(controls, java.awt.BorderLayout.SOUTH);
         }
-        setTitle("nRemote — TI-Nspire Faceplate");
+        setTitle("nRemote - TI-Nspire Faceplate");
         ImageIcon icn = new ImageIcon(getClass().getResource("nremote.png"));
         setIconImage(icn.getImage());
         setDefaultCloseOperation(primary ? WindowConstants.EXIT_ON_CLOSE : WindowConstants.HIDE_ON_CLOSE);

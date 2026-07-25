@@ -3,7 +3,7 @@ name: Build nRemote.jar
 # Builds the "no-libs" nRemote.jar. The real TI-Nspire NavNet libraries are
 # proprietary and not in the repo, so the code is compiled against the
 # signature-only stubs in ci/stubs/. The resulting jar contains ONLY nRemote's
-# classes and resolves the real TI classes at runtime — i.e. it is dropped next
+# classes and resolves the real TI classes at runtime, i.e. it is dropped next
 # to them in the TI-Nspire software's Java folder, exactly as the README says.
 #
 # Java 7 bytecode is required because the TI software bundles a Java 7 JRE.
