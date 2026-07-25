@@ -1,0 +1,65 @@
+name: Build nRemote.jar
+
+# Builds the "no-libs" nRemote.jar. The real TI-Nspire NavNet libraries are
+# proprietary and not in the repo, so the code is compiled against the
+# signature-only stubs in ci/stubs/. The resulting jar contains ONLY nRemote's
+# classes and resolves the real TI classes at runtime — i.e. it is dropped next
+# to them in the TI-Nspire software's Java folder, exactly as the README says.
+#
+# Java 7 bytecode is required because the TI software bundles a Java 7 JRE.
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed only for the release step on tags
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Compile (Java 7 target, against CI stubs)
+        run: |
+          set -e
+          mkdir -p build
+          find ci/stubs -name '*.java' > sources.txt
+          ls src/*.java >> sources.txt
+          javac -source 1.7 -target 1.7 -encoding UTF-8 -nowarn \
+                -cp src/lib/Alpha.jar -d build @sources.txt
+
+      - name: Package nRemote.jar (no-libs)
+        run: |
+          set -e
+          rm -rf build/com                      # drop the compile-only TI stubs
+          cp src/load.png src/nremote.png src/faceplate.png build/
+          mkdir -p out/artifacts/nRemote_noLibs
+          jar cfm out/artifacts/nRemote_noLibs/nRemote.jar \
+              src/META-INF/MANIFEST.MF -C build .
+          echo "=== jar contents ==="
+          jar tf out/artifacts/nRemote_noLibs/nRemote.jar
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nRemote-jar
+          path: out/artifacts/nRemote_noLibs/nRemote.jar
+          if-no-files-found: error
+
+      - name: Attach jar to release (on version tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/artifacts/nRemote_noLibs/nRemote.jar
