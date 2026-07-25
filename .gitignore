@@ -20,3 +20,6 @@ out/production
 .idea/workspace.xml
 
 out/artifacts/nRemote_withLibs/nRemote.jar
+
+# build output (published via GitHub Releases, not committed)
+out/artifacts/**/*.jar

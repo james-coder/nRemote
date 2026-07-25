@@ -5,7 +5,7 @@
 ### Control your TI-Nspire™ handheld from your computer.
 Mirror its live screen, click an accurate on-screen faceplate, or just type on your keyboard. Works with a single handheld or a whole classroom.
 
-[![Build nRemote.jar](https://github.com/james-coder/nRemote/actions/workflows/build.yml/badge.svg)](https://github.com/james-coder/nRemote/actions/workflows/build.yml)
+[![Build & Release](https://github.com/james-coder/nRemote/actions/workflows/build.yml/badge.svg)](https://github.com/james-coder/nRemote/actions/workflows/build.yml)
 [![License: WTFPL](https://img.shields.io/badge/license-WTFPL-brightgreen.svg)](http://www.wtfpl.net/)
 ![Platform: Windows | macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-blue)
 ![Java](https://img.shields.io/badge/Java-1.8%2B-orange)
@@ -65,7 +65,7 @@ The handheld's screen is shown in real time, including menus, dialogs, and calcu
 ## Install
 
 1. Install the [TI-Nspire Computer Link Software](https://education.ti.com/en/software/details/en/82035809F7E6474099944056CCB01C20/ti-nspire_computerlink) (Windows EXE or Mac DMG), if you do not already have TI-Nspire software.
-2. Get `nRemote.jar`. You can download it from the [latest build](https://github.com/james-coder/nRemote/actions/workflows/build.yml) (see Artifacts), from a [release](https://github.com/james-coder/nRemote/releases), or from `out/artifacts/nRemote_noLibs/nRemote.jar` in this repo.
+2. Download **`nRemote.jar`** from the [latest release](https://github.com/james-coder/nRemote/releases/latest).
 3. Browse to the folder where the TI-Nspire software is installed (for example `C:\Program Files (x86)\TI Education\TI-Nspire ...\` on Windows, or use *Show Package Contents* on Mac) and go into its Java or `lib` folder, the one that holds the other TI `.jar` files.
 4. Copy **`nRemote.jar`** there, next to those TI `.jar` files.
 
@@ -84,9 +84,9 @@ The handheld's screen is shown in real time, including menus, dialogs, and calcu
 
 ---
 
-## Building from source
+## Building and releasing
 
-Every push is built by GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Tagging a `v*` release also attaches the jar to that release.
+GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)) builds and tests the jar on every push. **The single source of the release version is the [`VERSION`](VERSION) file:** bump it, push to `master`, and CI publishes a new `v<version>` tag and GitHub Release with `nRemote.jar` attached (the app also reads this file to show its version). If the version has not changed, no new release is made.
 
 The real TI NavNet libraries are proprietary and are **not** in this repo, so the code is compiled against signature-only stubs in [`ci/stubs/`](ci/stubs) whose method descriptors match the real classes. The result is a **"no-libs" jar** that contains only nRemote's own classes and resolves the real TI classes at runtime, once it is dropped next to them as the install steps describe. It is compiled to **Java 7 bytecode**, because the TI software bundles a Java 7 JRE.
 
@@ -96,8 +96,14 @@ javac -source 1.7 -target 1.7 -encoding UTF-8 -cp src/lib/Alpha.jar \
       -d build $(find ci/stubs -name '*.java') src/*.java
 rm -rf build/com                                  # drop the compile-only stubs
 cp src/load.png src/nremote.png src/faceplate.png build/
+cp VERSION build/nremote-version.txt
 jar cfm nRemote.jar src/META-INF/MANIFEST.MF -C build .
 ```
+
+## Tests
+
+- **Without a calculator (runs in CI):** [`tests/FaceplateMapTest.java`](tests/FaceplateMapTest.java) checks the clickable faceplate: every key is a real TI key name, every button's centre resolves to that button, and no hit box is malformed. It would have caught real past bugs such as the `~10_power_x~` typo and the mislabelled flag key.
+- **With a calculator attached (run by hand):** [`tests/hardware/Probe.java`](tests/hardware/Probe.java) drives a real handheld through the same NavNet calls to verify key names, click-vs-Enter behaviour, and screen timing. It cannot run in CI (proprietary libraries and a device are required). See [`tests/README.md`](tests/README.md).
 
 ---
 

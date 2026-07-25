@@ -114,6 +114,23 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
      * shown under the faceplate. Each reuses the existing handler so behaviour
      * matches the classic keyboard window exactly.
      */
+    /** The app version, read from the VERSION file packaged as /nremote-version.txt. */
+    private static String appVersion() {
+        try {
+            java.io.InputStream in = NspireKeyboard.class.getResourceAsStream("/nremote-version.txt");
+            if (in != null) {
+                java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(in, "UTF-8"));
+                String v = r.readLine();
+                r.close();
+                if (v != null && !v.trim().isEmpty()) {
+                    return v.trim();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "dev";
+    }
+
     private javax.swing.JPanel buildFaceplateControls() {
         java.awt.Color bg = new java.awt.Color(51, 51, 51);
         javax.swing.JPanel bar = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 6, 4));
@@ -2406,7 +2423,7 @@ public class NspireKeyboard extends javax.swing.JFrame implements FaceplatePanel
 
         tiplanet.setForeground(new java.awt.Color(255, 255, 255));
         tiplanet.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v1.11.0 (fork)");
+        tiplanet.setText("Adriweb, Levak © 2012-2015 - tiplanet.org - v" + appVersion() + " (fork)");
         tiplanet.setFocusable(false);
         bottom.add(tiplanet);
 
