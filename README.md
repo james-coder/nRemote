@@ -1,124 +1,146 @@
---------------------------
-nRemote v1.9.0 (July 24th, 2026)
---------------------------
-Original authors : Adriweb, Levak  
-Thanks to Jim Bauwens for some calc<->computer protocol ([en/de]code algorithms)  
-http://tiplanet.org
+<div align="center">
 
+# nRemote
 
-0   - About this fork  
-I   - About  
-II  - How to install  
-III - How to use  
-IV  - Known bugs  
-V   - Changelog  
-VI  - License  
+### Control your TI‑Nspire™ handheld from your computer.
+Mirror its live screen, click an accurate on‑screen faceplate, or just type on your keyboard — for one handheld or a whole classroom.
 
+[![Build nRemote.jar](https://github.com/james-coder/nRemote/actions/workflows/build.yml/badge.svg)](https://github.com/james-coder/nRemote/actions/workflows/build.yml)
+[![License: WTFPL](https://img.shields.io/badge/license-WTFPL-brightgreen.svg)](http://www.wtfpl.net/)
+![Platform: Windows | macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-blue)
+![Java](https://img.shields.io/badge/Java-1.8%2B-orange)
 
-#0 - About this fork :
----------------------
-This repository is a fork of the original [adriweb/nRemote](https://github.com/adriweb/nRemote) by Adriweb and Levak of [TI-Planet](http://tiplanet.org). The upstream project received its last commit in October 2015 — nearly 11 years ago now — and while it appears to no longer be actively maintained, it remains a genuinely clever piece of work that this fork owes everything to. All credit for the concept and the original implementation belongs to its authors; this fork simply picks up where it left off.
+<img src="docs/faceplate.png" width="300" alt="nRemote's clickable TI-Nspire faceplate showing the handheld's live screen">
 
-Starting with v1.9.0, this fork integrates a substantial round of bug fixes (issue numbers refer to [this fork's issue tracker](https://github.com/james-coder/nRemote/issues?q=is%3Aissue)):
+</div>
 
-* Sticky Shift/Ctrl modifier state that made dialog OK buttons intermittently unresponsive to the click key (issue 1)
-* Screen scaling that pushed the keypad out of view when the main window was maximized (issue 2)
-* A rebuilt screen-refresh pipeline: background fetching, thread-safe Swing updates, serialized NavNet transport access so keystrokes are no longer silently dropped mid-refresh, and a shorter poll interval (issues 3, 8, 10)
-* Window sizing when toggling "Disable Screen" (issue 4)
-* Sequence recording/playback robustness: saving via a file chooser with proper error reporting, playback off the UI thread (issues 5, 6)
-* Stale device-list handling when handhelds are swapped, and crash guards when a handheld drops mid-refresh (issues 7, 11)
-* Physical Tab key support and other keyboard-input cleanups (issues 9, 12)
-* A retry dialog at startup instead of exiting when the TI software isn't running yet (issue 13)
+---
 
-Work that requires a connected handheld to investigate or verify (pointer/mouse translation, the historically dead exp() key, refresh-rate tuning) is tracked under the `needs-hardware` label.
+## What is nRemote?
 
+**nRemote** is a small Java program that remote‑controls one or more **TI‑Nspire** handhelds connected to your PC or Mac — directly over USB, or through the TI‑Navigator wireless system. It mirrors the handheld's screen in real time and sends key presses back to it, so you can drive the calculator entirely from your computer. It's handy for **classroom demonstrations**, **screen projection**, keeping every student's device **in sync**, or recording and replaying a set of keystrokes.
 
-#I - About :
------------
-nRemote is a Java program designed to remote control one or multiple TI-Nspire handhelds when connected to your PC or Mac, whether directly via USB, or via the Navigator Wireless system.  
-nRemote also features sequence recording and playing in order to easily execute a set of key presses.  
-nRemote can be used for educational purpose in order to synchronise every student's handheld state or by showing a demonstration for a program...
+- 🖥️ **Live screen mirroring** — see the handheld's display update as you work.
+- 🎛️ **Clickable faceplate** — an accurate picture of the TI‑Nspire Touchpad; click any key. *(`--faceplate`)*
+- ⌨️ **Type on your keyboard** — A→A, 1→1, Enter, arrows, Ctrl/Shift… go straight to the calculator.
+- ⏺️ **Record & replay** key sequences to a file.
+- 📁 **Drag‑and‑drop** `.tns` files onto the window to transfer them.
+- 👥 **One or many** handhelds — send to all connected devices or a selected subset.
+- ➗ **Math palettes** for trig, π, symbols and conditionals.
 
-![Overall preview](http://i.imgur.com/IhVB1.jpg)
+---
 
-#II - How to install :
----------------------
-1. Install Java JRE 1.8 if your system doesn't have it already.
-2. You may have installed any 3.6/3.9 version of TI-Nspire Computer Software (Navigator or not, Teacher or Student does not matter) before using nRemote. This in fact restrains the usage of nRemote to PC and Mac users only. Linux users may find workarounds with WINE.
-3. Browse to the folder where TI-Nspire family computer software is installed (for example in C:\Program Files (x86)\TI Education\TI-Nspire CAS Teacher Software\  ;  use "Show package Contents" on Mac)), and go inside where the Java files are ("Java" folder inside, probably).
-4. Copy and paste the file "nRemote.jar" there, with all the other TI .jar files.
-Note: It's possible that the software refuses to launch with that new file in there. If so, just launch the software first then put it there once it has opened correctly.
+## A maintained fork
 
+This repository is a **fork of [adriweb/nRemote](https://github.com/adriweb/nRemote)** by **Adriweb** and **Levak** of [TI‑Planet](https://tiplanet.org), with calc↔computer protocol help from Jim Bauwens.
 
-#III - How to use :
-------------------
-1. *Launch your TI-Nspire family computer software FIRST*
-2. Open "nRemote.jar"
-    
-For any platform, you may also try to launch it via terminal ("java -jar [path_to_the_folder]/nRemote.jar")
-It can be interesting to create a shortcut of "nRemote.jar" anywhere you want.
+> The upstream project received its **last commit in October 2015 — nearly 11 years ago** — and appears to be no longer maintained. It remains a genuinely clever piece of work that this fork owes everything to; all credit for the concept and original implementation belongs to its authors.
 
-**Desktop shortcut & icon (Windows):** copy `nRemote.jar` and `nremote.ico` into the TI software's Java/lib folder (with the other TI `.jar` files), then run `launcher/Create-Desktop-Shortcut.ps1` (or drop `launcher/nRemote.bat` next to the jar and double-click it). This makes a *nRemote* desktop shortcut with the app icon that launches it through the TI-bundled Java. See `launcher/README.md`.
+This fork picks up where it left off. Since **v1.9.0** it verifies behaviour against a real handheld (OS 3.6) and adds a substantial round of fixes and features:
 
-**Building from source:** the GitHub Actions workflow `.github/workflows/build.yml` compiles `nRemote.jar` on every push (against the signature-only stubs in `ci/stubs/`, since the TI NavNet libraries can't be redistributed) and uploads it as a build artifact; tagging a `v*` release attaches the jar to the release.
+- Fixed sticky Shift/Ctrl state that made dialog buttons unresponsive, maximize scaling that hid the keypad, and a rebuilt, thread‑safe screen‑refresh pipeline so keystrokes are no longer silently dropped.
+- Corrected key names against TI's real key table (e.g. `10ˣ`, shift‑click), and made the touchpad **center‑click select** the highlighted item (the handheld ignores the raw click, so it sends Enter).
+- Robust sequence save/playback, device‑list handling, physical‑keyboard support, and a startup retry dialog.
+- New **graphical faceplate** (`--faceplate`), a **build workflow**, and a **desktop icon/launcher**.
 
-**Graphical faceplate (v1.10.0):** launch with `--faceplate` (i.e. `java -jar nRemote.jar --faceplate`) to open a clickable picture of the TI-Nspire Touchpad instead of the text keyboard. Click a key to press it — modifiers, arrows/click, and the trig/π/symbols palettes behave exactly like the text keyboard — and the handheld's live screen is shown right in the faceplate's screen area. You can also just **type on your computer keyboard** (A→A, 1→1, Enter, arrows, Ctrl/Shift, Backspace, Tab, …) and it goes straight to the calculator. A control bar below the calculator holds the program functions that have no key on the device — sequence **Record/Stop** and **Load**, **Disable Screen**, **All/Selection** device targeting and **Devices…** — and you can still drag-and-drop `.tns` files onto the window to transfer them. It resizes freely and will drive the built-in emulator too, once that lands.
+See the full history in [Changelog](#changelog).
 
+---
 
-#IV - Known Issues :
------------------
-* PC :  
-    Q1: nRemote can't connect and TI-Nspire Computer Software can't see my handhelds !  
-    A1: It appears you launched nRemote before launching TI-Nspire Computer Software. Since v1.9.0, nRemote offers a retry dialog: launch the TI software, then click Yes to retry. If the TI software itself got stuck, kill java.exe/javaw.exe and TI-Nspire Computer Software via the Task Manager (or restart Windows in extreme cases).  
+## Live screen mirroring
 
-* Mac :  
-    Q2: The GUI may look flat with red dots.  
-    A2: There may be a Java version conflict (1.6/1.7). Open a Terminal window, try "java -jar [the nRemote.jar full path]".  
+The handheld's screen is shown in real time — menus, dialogs, calculations, everything:
 
-* General :  
-    Q3: nRemote says (in its title) that one (or more) device is connected, but there is none.  
-    A3: Largely fixed in v1.9.0 (the device list now refreshes on membership changes, not just count changes). If it still happens, use the refresh option in TI-Nspire Computer Software — the Navigator Wireless System has a window listing connected devices with a Refresh button.  
-    Q4 : Some keys don't work.  
-    A4: Investigated against TI's key table and verified on a real handheld (OS 3.6) in v1.9.0:  
-      - The 10^x button silently sent an invalid key name (`~10_power_x~` instead of TI's `~ten_power_x~`) — fixed and verified working.  
-      - Shift+click sent the invalid `~shift_hold_click~` — now sends TI's `~shift_grab~`.  
-      - e^x (`~e_power_x~`) is a valid protocol name but the handheld's firmware ignores it (its ctrl variant types ln) — a TI limitation nRemote cannot work around.  
-      - The `!`, `$`, `\` and `%` symbol-palette buttons never had a keycode in TI's protocol; they are now disabled with an explanatory tooltip.  
-    Q5 : The touchpad center-click doesn't select menu items or dialog buttons.  
-    A5: Fixed in v1.10.1. The handheld ignores the remote `~click~` keystroke for selection (verified on-device, even with a full press+release), so the center-click / CLIC button now sends Enter, which activates the highlighted item exactly like the physical center-click.
+<div align="center">
+<img src="docs/screens.png" width="760" alt="Live TI-Nspire screens: home menu, settings, and the handheld status dialog">
+</div>
 
+---
 
-#V - Changelog :
-----------------
-- v0.9 : *Private*. No GUI, Console Only. Basic sendEvents.
-- v0.99 : *Private*. Basic GUI. Bugfixes etc.
-- v1.0 : *Private*. Improved GUI. Bugfixes etc.
-- v1.01 : *Private*. Improved GUI. Bugfixes etc.
-- v1.02 : *Private*. Improved GUI. Bugfixes etc.
-- v1.1 : *Private*. "--no-screenshots" CLI option added to allow no-delay text typing, - Smaller overall code, Shift-Hold-xxxxx keys now working, Meta-key support (i.e : Mac's Cmd => Nspire's Ctrl), Version displayed in the frame
-- v1.2 : *Private*. interface redone from scratch : better resizing. GUI option to disable screen.
-- v1.3 : *Public Release*. Reduced delays. Sequences. Bugfixes etc.
-- v1.4 : *Public* Error msg fixed. Drag and Drop transfer any files. Calculator target(s) selection. Fixed the missing 1.6 java target flag.
-- v1.5 : *Public* Read devices selection done. Application icon added. Overall code cleaned.
-- v1.6 : *Public* Screen auto-scaling when the window is being resized.
-- v1.7 : *Public* Additional, separate Screen frame ; improvements. "Private" background work on two-way communication (calc<->computer) : Internet access working (tested : calc-calc and IRC chat, web browser, wolfram alpha API call)
-- v1.7.1 : *Public* Fixed the always-focused window.
-- v1.7.1c : *Public* Cleaned some prints, rebuilt (I hope) for 1.6, finally the changed version number in the window
-- v1.8.0a : *Public* Quickly made it compatible with 3.6/3.9 (not compatible with older versions anymore). Not tested on Windows. Real-time screen seems broken, not sure why.
-- v1.8.1a : *Public* Fixed Real-time screen (TI had encapsulated the screen object).
-- v1.9.0 : *Fork* First release of this fork. Integrates the bug-fix round described in "About this fork" above: sticky modifier state, maximize scaling, refresh pipeline rebuild (background fetch + EDT-safe updates + transport lock), Disable Screen sizing, sequence save/playback robustness, device-list staleness, keyboard input fixes, startup retry.
-- v1.10.0 : *Fork* Added an optional clickable TI-Nspire Touchpad faceplate (`--faceplate`): a scalable image of the calculator with every key mapped and the live handheld screen overlaid in its screen bezel. Also: physical-keyboard typing, a control bar (record/load/screen/device) and drag-drop in faceplate mode.
-- v1.10.1 : *Fork* The touchpad center-click (and CLIC button) now selects/activates the highlighted item — the handheld ignores the remote ~click~ keystroke, so it is sent as Enter (verified on-device).
-- v1.10.2 : *Fork* Faceplate: the live screen no longer double-exposes with the faceplate's built-in screen graphic — the LCD area is painted over first, then the real 4:3 screen is drawn centred with its aspect ratio preserved.
-- v1.11.0 : *Fork* Faceplate accuracy pass: the science and operator keys are now two-per-row with their secondary-function legends (=/trig, ^/x², eˣ/10ˣ, (/), ×/÷, +/−, catalog, templates), the minus key is present, the undo symbol sits above esc, del shows its backspace arrow, and the EE/π/,/?!/flag/return keys are grey with the flag key corrected. Added a build workflow and a startup icon/launcher.
+## Requirements
 
-Future :
-- Mouse/pointer translation from the computer screen to the calculator (needs protocol investigation with a handheld)  
-- Verifying the historically dead keys (exp() etc.) against a real handheld  
-- Refresh-rate measurement and tuning with a real handheld  
-- Internal Sequence Editor (upstream's idea, still a good one)  
+- **Java JRE 1.8+** (the app itself targets Java 7 so it also runs on the JRE bundled with the TI software).
+- **TI‑Nspire Computer Software or Computer Link, version 3.6 / 3.9** (Navigator or not, Teacher or Student — any works). This is what provides the USB/wireless link, so nRemote runs on **PC and Mac** only. Linux users may find workarounds with WINE.
 
+## Install
 
-#VI - License :
--------------
-WTFPL License ( http://sam.zoy.org/wtfpl/ ). But also thank the original authors. And visit http://tiplanet.org :)
+1. Install the TI‑Nspire software above (if you don't already have it).
+2. Grab `nRemote.jar` — download it from the [latest build](https://github.com/james-coder/nRemote/actions/workflows/build.yml) (Artifacts), a [release](https://github.com/james-coder/nRemote/releases), or `out/artifacts/nRemote_noLibs/nRemote.jar` in this repo.
+3. Browse to the folder where the TI‑Nspire software is installed (e.g. `C:\Program Files (x86)\TI Education\TI-Nspire … \` on Windows; *Show Package Contents* on Mac) and go into its Java / `lib` folder — the one containing the other TI `.jar` files.
+4. Copy **`nRemote.jar`** there, alongside those TI `.jar` files.
+
+> If the TI software then refuses to launch, start it first and drop `nRemote.jar` in afterwards.
+
+## Usage
+
+1. **Launch the TI‑Nspire software first.**
+2. Open **`nRemote.jar`** (double‑click, or `java -jar nRemote.jar`).
+3. To use the graphical faceplate instead of the text keyboard, launch with **`--faceplate`**:
+   ```
+   java -jar nRemote.jar --faceplate
+   ```
+
+**Desktop shortcut & icon (Windows):** copy `nRemote.jar` and [`nremote.ico`](nremote.ico) into that TI Java/`lib` folder, then run [`launcher/Create-Desktop-Shortcut.ps1`](launcher/Create-Desktop-Shortcut.ps1) (or drop [`launcher/nRemote.bat`](launcher/nRemote.bat) next to the jar and double‑click it). You get a *nRemote* shortcut with the app icon that launches through the TI‑bundled Java. See [`launcher/README.md`](launcher/README.md).
+
+---
+
+## Building from source
+
+Every push is built by GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)); tagging a `v*` release attaches the jar to the release.
+
+The real TI NavNet libraries are proprietary and **not** in this repo, so the code is compiled against signature‑only stubs in [`ci/stubs/`](ci/stubs) whose method descriptors match the real classes. The result is a **“no‑libs” jar** — only nRemote's own classes — which resolves the real TI classes at runtime once dropped next to them, exactly as the install steps describe. It is compiled to **Java 7 bytecode** because the TI software bundles a Java 7 JRE.
+
+```bash
+# roughly what CI does (JDK 8):
+javac -source 1.7 -target 1.7 -encoding UTF-8 -cp src/lib/Alpha.jar \
+      -d build $(find ci/stubs -name '*.java') src/*.java
+rm -rf build/com                                  # drop the compile-only stubs
+cp src/load.png src/nremote.png src/faceplate.png build/
+jar cfm nRemote.jar src/META-INF/MANIFEST.MF -C build .
+```
+
+---
+
+## Known issues
+
+| Symptom | Status |
+| --- | --- |
+| Stuck connecting / TI software can't see handhelds | Usually nRemote was launched **before** the TI software. Since v1.9.0 a retry dialog lets you start the TI software and retry. If the TI software itself got stuck, kill `java.exe`/`javaw.exe` + the TI software in Task Manager. |
+| Mac GUI looks flat with red dots | Java 1.6/1.7 conflict — run from a terminal: `java -jar nRemote.jar`. |
+| Title says a device is connected but there isn't | Largely fixed in v1.9.0 (the list refreshes on membership changes). Otherwise use the Refresh option in the TI software. |
+| Some keys (e.g. `e^x`) do nothing | The handheld's firmware ignores a few remote keystrokes — a TI limitation, not an nRemote bug. Affected buttons carry a tooltip. |
+
+---
+
+## Changelog
+
+**Highlights:** v1.9.0 revived the fork with a large bug‑fix round (verified on real hardware); v1.10 added the graphical faceplate, physical‑keyboard typing, a control bar and center‑click‑selects‑item; v1.11 made the faceplate accurate to the real device and added a build workflow + desktop icon.
+
+<details>
+<summary>Full version history</summary>
+
+- **v1.11.0** — *Fork.* Faceplate accuracy pass: two‑per‑row science/operator keys with their legends, the minus key, the undo symbol above esc, del's backspace arrow, and grey `EE`/`π`/`,`/`?!`/flag/return keys with the flag key corrected. Added a build workflow, CI stubs, and a startup icon/launcher.
+- **v1.10.2** — *Fork.* Faceplate live screen no longer double‑exposes with the built‑in screen graphic (LCD painted first, then the 4:3 screen centred).
+- **v1.10.1** — *Fork.* Touchpad center‑click (and the CLIC button) now selects/activates the highlighted item — sent as Enter, since the handheld ignores the remote `~click~`.
+- **v1.10.0** — *Fork.* Optional clickable TI‑Nspire Touchpad faceplate (`--faceplate`) with the live screen overlaid; physical‑keyboard typing; a control bar (record/load/screen/device) and drag‑drop in faceplate mode.
+- **v1.9.0** — *Fork.* First fork release: sticky‑modifier fix, maximize scaling, rebuilt refresh pipeline (background fetch + EDT‑safe updates + transport lock), Disable‑Screen sizing, sequence save/playback robustness, device‑list staleness, keyboard‑input fixes, startup retry, on‑device key‑name verification.
+- **v1.8.1a** — *Public.* Fixed real‑time screen (TI had encapsulated the screen object).
+- **v1.8.0a** — *Public.* Made compatible with 3.6/3.9 (dropped older versions).
+- **v1.7.x** — *Public.* Additional separate screen frame; background work on two‑way calc↔computer communication (IRC, web, Wolfram Alpha).
+- **v1.6** — *Public.* Screen auto‑scaling on resize.
+- **v1.5** — *Public.* Read‑device selection; application icon; code cleanup.
+- **v1.4** — *Public.* Drag‑and‑drop file transfer; calculator target selection.
+- **v1.3** — *Public release.* Reduced delays; sequences.
+- **v1.0 – v1.2** — *Private.* GUI, resizing, screen toggle.
+- **v0.9 – v0.99** — *Private.* Console only; basic sendEvents.
+
+</details>
+
+---
+
+## Credits & License
+
+- **Original authors:** Adriweb & Levak — [TI‑Planet](https://tiplanet.org). Protocol help: Jim Bauwens.
+- Released under the **[WTFPL](http://www.wtfpl.net/)**. Do what you want — but also thank the original authors, and visit [tiplanet.org](https://tiplanet.org). 🙂
+
+*TI‑Nspire and TI‑Navigator are trademarks of Texas Instruments. This is an independent, unofficial tool.*
