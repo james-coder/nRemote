@@ -1,15 +1,19 @@
+/* _DEFAULT_SOURCE so usleep() is declared under -std=c11 (Firebird's flags). */
+#define _DEFAULT_SOURCE 1
 /*
- * nremote_bridge.c  --  DRAFT TCP bridge that exposes Firebird's core to the
+ * nremote_bridge.c  --  TCP bridge that exposes Firebird's core to the
  * nRemote frontend, so the existing nRemote GUI (src/EmulatorBridge.java) can
  * drive an emulated TI-Nspire instead of a physical handheld. Tracking: #19.
  *
  * This file is written to be dropped into the Firebird source tree (the
  * nspire-emus/firebird emulator, https://github.com/nspire-emus/firebird) and
- * compiled with its core. It has NOT been compiled against Firebird here (that
- * needs the Firebird build), so treat it as a reviewed draft, not a tested
- * binary. Everything it calls is real Firebird core API (core/keypad.h,
- * core/lcd.h); the key matrix positions are taken verbatim from Firebird's
- * keymap.h. See README.md in this folder for how to wire it in.
+ * compiled with its core. It HAS been compiled and linked into Firebird's
+ * headless target here (nremote_bridge_start resolves against the real
+ * keypad_set_key / lcd_draw_frame / touchpad_set_state); it has not yet been
+ * exercised against a booted OS, which needs a boot1 image. Everything it calls
+ * is real Firebird core API (core/keypad.h, core/lcd.h); the key matrix
+ * positions are taken verbatim from Firebird's keymap.h. See README.md and
+ * BOOT.md in this folder for how to wire it in and run it.
  *
  * Wire protocol (matches EmulatorBridge.java):
  *     client -> "SHOT\n"              server -> "IMG <len>\n" + <len> PNG bytes

@@ -29,11 +29,18 @@ One socket, plain-text control lines, one length-prefixed PNG for the screen:
 
 ## Integrating into Firebird
 
-1. Drop `nremote_bridge.c` into Firebird's `core/` and add it to the core build
-   (the `.pro` / CMake source list). It needs zlib (already a Firebird dep).
-2. Declare and call the entry point once at startup, after the core is up:
+`build-and-run.sh` in this folder does all of this against Firebird's **headless**
+target (no Qt needed) and has been verified to build. The steps it automates:
+
+1. Add `nremote_bridge.c` to the build source list and link `-lpthread` (zlib is
+   already a Firebird dep). For the headless target that is `headless/Makefile`.
+2. Declare and call the entry point once at startup, after the core is up. The
+   declaration must be at **file scope** (a C++ `extern "C"` linkage spec is not
+   allowed inside a function body), because `main.cpp` is C++ and the bridge is C:
    ```c
-   extern void nremote_bridge_start(int port);   /* 0 -> default 3334 */
+   // file scope, near the top of headless/main.cpp:
+   extern "C" void nremote_bridge_start(int port);
+   // ...then in main(), after emu_start() and before emu_loop():
    nremote_bridge_start(3334);
    ```
 3. **Thread safety.** Firebird's core runs on the emulation thread and is not
@@ -49,6 +56,10 @@ Then launch nRemote against it:
 ```
 java -jar nRemote.jar --emulator            # localhost:3334
 ```
+
+See [`BOOT.md`](BOOT.md) for the full end-to-end runbook: building the headless
+emulator, creating the flash with `tools/mkflash` (manuf is generated, so no
+manuf dump is needed), and the one image you still have to supply, `boot1`.
 
 ## Key map (nRemote name to keypad matrix)
 
