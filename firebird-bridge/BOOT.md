@@ -60,7 +60,7 @@ tail -c +64 os.tno > os.zip                 # strip the 63-byte header
 unzip os.zip boot2.img                      # boot2 (~977 KB)
 ```
 
-**For the OS, use the `.tno` file itself — not the extracted `TI-Nspire.img`.**
+**For the OS, use the `.tno` file itself , not the extracted `TI-Nspire.img`.**
 This matters and is easy to get wrong: Firebird validates an OS with
 `flash_os_info()`, which searches the first 1024 bytes for a `"TI-Nspire.<ext>"`
 header. Only the `.tno` has it (`TI-Nspire.tno 3.60.550 ...`); the extracted
