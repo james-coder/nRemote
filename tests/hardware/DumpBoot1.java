@@ -77,6 +77,18 @@ public class DumpBoot1 {
      */
     private static final String[] OTHER_SUPPORTED = { "3.90.0.463", "3.90.1.38", "3.10.0.392" };
 
+    /**
+     * SHA-256 of the exact files used in the run this tool was built from, so a
+     * wrong or tampered download is caught before it is opened on the handheld.
+     * A mismatch warns rather than refuses: other Ndless builds are legitimate
+     * for other OS versions, and only these three have been through a real run.
+     */
+    private static final String[][] KNOWN_GOOD = {
+        { "ndless_installer_3.6.tns", "96da59d817074bf54be514224960755f5d067a29a93d7f876a3694fa54b20f6b" },
+        { "ndless_resources.tns",     "5994e5096d16e2c4289bc9bc976f0e50f6703c6c603cf9476e043c5a41a41330" },
+        { "polyDumper.tns",           "437e423f801089b618d483d86bcb0a8b2bcb7e466449e0173e9cada29986d7ee" },
+    };
+
     /** Files PolyDumper writes on a classic handheld, next to its own .tns. */
     private static final String[] DUMPS = {
         "boot1.img.tns", "boot1alt.img.tns", "boot2.img.tns",
@@ -129,6 +141,24 @@ public class DumpBoot1 {
         System.out.println("    model   : " + name);
         System.out.println("    OS      : " + version);
         System.out.println("    serial  : " + serial);
+
+        // The OS version alone does not identify the family, and a CX or CX II
+        // needs entirely different files. Require a positive identification.
+        String lower = name.toLowerCase();
+        if (lower.indexOf("cx") >= 0 || lower.indexOf("cm") >= 0) {
+            System.out.println();
+            System.out.println("  STOP. This reports as '" + name + "', which is not a classic");
+            System.out.println("  (non-CX) handheld. CX, CM and CX II need different Ndless and");
+            System.out.println("  PolyDumper files and a different Firebird product code, and this");
+            System.out.println("  tool has only been run against a classic Touchpad.");
+            System.exit(1);
+        }
+        if (lower.indexOf("nspire") < 0) {
+            System.out.println();
+            System.out.println("  STOP. Could not positively identify this as a TI-Nspire");
+            System.out.println("  (it reports as '" + name + "'). Refusing to guess.");
+            System.exit(1);
+        }
 
         String installer = chooseInstaller(version, explicitInstaller);
         System.out.println("    installer: " + installer);
@@ -416,13 +446,19 @@ public class DumpBoot1 {
         if (boot1ok) {
             System.out.println(" boot1 dumped: " + new File(dumpDir, "boot1.img").getAbsolutePath());
             System.out.println();
-            System.out.println(" To build a flash and boot it, see firebird-bridge/BOOT.md. You");
-            System.out.println(" also need the .tno OS image for your handheld, and boot2 extracted");
-            System.out.println(" from it. Build mkflash from firebird-bridge/tools first, then:");
+            System.out.println();
+            System.out.println(" Everything retrieved is in " + dumpDir.getAbsolutePath());
+            System.out.println(" (the .img.tns files are raw images despite the extension).");
+            System.out.println();
+            System.out.println(" To turn this into a running emulator, see firebird-bridge/BOOT.md.");
+            System.out.println(" You still need TWO things this tool does not fetch: the .tno OS");
+            System.out.println(" image for your handheld's build, and boot2.img extracted from it");
+            System.out.println(" (tail -c +64 os.tno > os.zip, then unzip boot2.img). Then, with");
+            System.out.println(" mkflash built from firebird-bridge/tools:");
             System.out.println("   mkflash boot2.img os.tno nspire.flash 0x0E0 \\");
             System.out.println("           " + new File(dumpDir, "manuf.img.tns").getAbsolutePath());
-            System.out.println("   firebird-headless --boot1 " + new File(dumpDir, "boot1.img").getAbsolutePath()
-                    + " \\");
+            System.out.println("   firebird-headless \\");
+            System.out.println("           --boot1 " + new File(dumpDir, "boot1.img").getAbsolutePath() + " \\");
             System.out.println("           --flash nspire.flash");
         } else {
             System.out.println(" boot1 did NOT validate. See the messages above.");
@@ -476,7 +512,19 @@ public class DumpBoot1 {
      */
     private static String chooseInstaller(String version, String explicit) {
         if (explicit != null) {
-            if (!VERIFIED_VERSION.equals(version)) {
+            if (VERIFIED_VERSION.equals(version) && !VERIFIED_INSTALLER.equals(explicit)) {
+                // We know the right answer for this OS, so a different file is
+                // more likely a mistake than an informed choice.
+                System.out.println();
+                System.out.println("  This handheld runs " + version + ", for which the correct");
+                System.out.println("  installer is '" + VERIFIED_INSTALLER + "', but you named");
+                System.out.println("  '" + explicit + "'. Running a build meant for another OS is");
+                System.out.println("  how people lose the OS on their calculator.");
+                if (!confirm("  Type 'yes' only if you are certain: ")) {
+                    System.out.println("  Aborted. Nothing was changed on the handheld.");
+                    System.exit(0);
+                }
+            } else if (!VERIFIED_VERSION.equals(version)) {
                 System.out.println();
                 System.out.println("  You named an installer for an OS this tool has not been run");
                 System.out.println("  against ('" + version + "'). Check against the Ndless release");
@@ -722,7 +770,13 @@ public class DumpBoot1 {
         FileInputStream in = null;
         try {
             in = new FileInputStream(f);
-            if (in.read(head) != head.length) {
+            int off = 0;                      // a single read() may return short
+            while (off < head.length) {
+                int r = in.read(head, off, head.length - off);
+                if (r < 0) break;
+                off += r;
+            }
+            if (off != head.length) {
                 System.out.println("    too short to be boot1");
                 return false;
             }
@@ -847,12 +901,46 @@ public class DumpBoot1 {
     }
 
     private static boolean requireFile(File f, String where) {
-        if (f.isFile() && f.length() > 0) {
-            System.out.println("    found " + f.getName() + " (" + f.length() + " bytes)");
-            return false;
+        if (!f.isFile() || f.length() == 0) {
+            System.out.println("    MISSING " + f.getName() + "  -- get it " + where);
+            return true;
         }
-        System.out.println("    MISSING " + f.getName() + "  -- get it " + where);
-        return true;
+        String note = "";
+        for (int i = 0; i < KNOWN_GOOD.length; i++) {
+            if (!KNOWN_GOOD[i][0].equals(f.getName())) continue;
+            String actual = sha256(f);
+            note = KNOWN_GOOD[i][1].equals(actual) ? "  [matches the known-good copy]"
+                    : "  <-- DIFFERENT from the copy this tool was tested with";
+            if (!KNOWN_GOOD[i][1].equals(actual)) {
+                System.out.println("    found " + f.getName() + " (" + f.length() + " bytes)" + note);
+                System.out.println("      expected sha256 " + KNOWN_GOOD[i][1]);
+                System.out.println("      got             " + actual);
+                System.out.println("      That is fine if you deliberately have a different build,");
+                System.out.println("      but check it came from the official release before going on.");
+                return false;
+            }
+        }
+        System.out.println("    found " + f.getName() + " (" + f.length() + " bytes)" + note);
+        return false;
+    }
+
+    private static String sha256(File f) {
+        FileInputStream in = null;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            in = new FileInputStream(f);
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            byte[] d = md.digest();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < d.length; i++) sb.append(String.format("%02x", d[i] & 0xFF));
+            return sb.toString();
+        } catch (Exception e) {
+            return "(could not hash: " + brief(e) + ")";
+        } finally {
+            closeQuietly(in);
+        }
     }
 
     private static boolean confirm(String prompt) {
