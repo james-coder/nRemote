@@ -20,6 +20,8 @@ public class nRemote {
         boolean noScreenshots = false;
         boolean scan = false;
         boolean faceplate = false;
+        String emulatorHost = null;
+        int emulatorPort = 3334;
 
         if (args.length > 0) {
             for (String str : args) {
@@ -35,6 +37,23 @@ public class nRemote {
                     faceplate = true;
                     System.out.println("-------Graphical faceplate enabled-------");
                 }
+                // --emulator  or  --emulator=host:port  drives a Firebird bridge
+                // instead of a physical handheld (default 127.0.0.1:3334).
+                if (str.equals("--emulator")) {
+                    emulatorHost = "127.0.0.1";
+                } else if (str.startsWith("--emulator=")) {
+                    String hp = str.substring("--emulator=".length());
+                    int colon = hp.lastIndexOf(':');
+                    if (colon > 0) {
+                        emulatorHost = hp.substring(0, colon);
+                        emulatorPort = Integer.parseInt(hp.substring(colon + 1));
+                    } else {
+                        emulatorHost = hp;
+                    }
+                }
+            }
+            if (emulatorHost != null) {
+                System.out.println("-------Emulator mode: " + emulatorHost + ":" + emulatorPort + "-------");
             }
         }
 
@@ -59,19 +78,25 @@ public class nRemote {
         // In faceplate mode the text keyboard stays hidden; the faceplate is
         // the interface. It still runs as the controller behind the scenes.
         k.setVisible(!faceplate);
-        while (true) {
-            try {
-                Remote.Initialize();
-                break;
-            } catch (Exception e) {
-                // Let the user launch the TI software and retry instead of
-                // forcing an nRemote restart (README known issue Q1).
-                int choice = JOptionPane.showConfirmDialog(k,
-                        "Could not connect to the TI-Nspire software.\n"
-                                + "Launch a TI-Nspire Computer Software first (see readme), then click Yes to retry.",
-                        "nRemote", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
-                if (choice != JOptionPane.YES_OPTION) {
-                    System.exit(0);
+        if (emulatorHost != null) {
+            // Emulator mode: no NavNet / TI software involved. Remote presents
+            // one synthetic device and routes screen/key calls to the bridge.
+            Remote.enableEmulator(emulatorHost, emulatorPort);
+        } else {
+            while (true) {
+                try {
+                    Remote.Initialize();
+                    break;
+                } catch (Exception e) {
+                    // Let the user launch the TI software and retry instead of
+                    // forcing an nRemote restart (README known issue Q1).
+                    int choice = JOptionPane.showConfirmDialog(k,
+                            "Could not connect to the TI-Nspire software.\n"
+                                    + "Launch a TI-Nspire Computer Software first (see readme), then click Yes to retry.",
+                            "nRemote", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
+                    if (choice != JOptionPane.YES_OPTION) {
+                        System.exit(0);
+                    }
                 }
             }
         }
