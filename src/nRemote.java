@@ -20,6 +20,7 @@ public class nRemote {
         boolean noScreenshots = false;
         boolean scan = false;
         boolean faceplate = false;
+        boolean debugger = false;
         String emulatorHost = null;
         int emulatorPort = 3334;
 
@@ -36,6 +37,10 @@ public class nRemote {
                 if (str.equals("--faceplate")) {
                     faceplate = true;
                     System.out.println("-------Graphical faceplate enabled-------");
+                }
+                if (str.equals("--debugger")) {
+                    debugger = true;
+                    System.out.println("-------Debugger window enabled-------");
                 }
                 // --emulator  or  --emulator=host:port  drives a Firebird bridge
                 // instead of a physical handheld (default 127.0.0.1:3334).
@@ -82,6 +87,17 @@ public class nRemote {
             // Emulator mode: no NavNet / TI software involved. Remote presents
             // one synthetic device and routes screen/key calls to the bridge.
             Remote.enableEmulator(emulatorHost, emulatorPort);
+            if (debugger) {
+                // Inspecting the emulated machine: registers, memory, stack,
+                // disassembly and breakpoints, driven through the same bridge.
+                final DebuggerFrame dbgWin = new DebuggerFrame(emulatorHost, emulatorPort);
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        dbgWin.setVisible(true);
+                        dbgWin.refreshAll();
+                    }
+                });
+            }
         } else {
             while (true) {
                 try {

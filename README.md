@@ -23,7 +23,14 @@ Mirror its live screen, click an accurate on-screen faceplate, or just type on y
 - 🖥️ **Live screen mirroring.** See the handheld's display update as you work.
 - 🎛️ **Clickable faceplate.** An accurate picture of the TI-Nspire Touchpad; click any key. *(`--faceplate`)*
 - ⌨️ **Type on your keyboard.** A→A, 1→1, Enter, arrows, Ctrl/Shift, and the rest go straight to the calculator.
-- 🟢 **Sticky Ctrl and Shift.** Click a modifier to arm it for the next key (armed keys glow green on the faceplate), matching the handheld.
+- 🟢 **Debugger (emulator only).** Add `--debugger` alongside `--emulator` to open a
+debugger window for the emulated handheld: registers with the values that just
+changed highlighted, live disassembly, a memory view, the stack, and read/write/
+execute breakpoints. It drives [Firebird](https://github.com/nspire-emus/firebird)'s
+own debugger, so a console pane accepts any of its commands too. See
+[`docs/EMULATION.md`](docs/EMULATION.md).
+
+**Sticky Ctrl and Shift.** Click a modifier to arm it for the next key (armed keys glow green on the faceplate), matching the handheld.
 - ⏺️ **Record and replay** key sequences to a file.
 - 📁 **Drag and drop** `.tns` files onto the window to transfer them.
 - 👥 **One or many** handhelds. Send to all connected devices, or a selected subset.
