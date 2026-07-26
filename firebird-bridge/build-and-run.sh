@@ -51,7 +51,10 @@ s = s.replace('#include "core/usblink_queue.h"',
               '#include "core/usblink_queue.h"\n\n'
               '// nRemote bridge (nremote_bridge.c, C linkage).\n'
               'extern "C" void nremote_bridge_start(int port);\n'
-              'extern "C" void nremote_bridge_tick(void);', 1)
+              'extern "C" void nremote_bridge_tick(void);\n'
+              'extern "C" void nremote_dbg_output(const char *text, int n);\n'
+              'extern "C" void nremote_dbg_set_callback(void *cb);\n'
+              'extern "C" void nremote_dbg_entered(int entered);', 1)
 
 # Start the server after emu_start(), just before the emulation loop. Turbo off
 # so the guest runs at roughly real speed.
@@ -63,6 +66,43 @@ s = s.replace("turbo_mode = true;",
 # fixed amount of GUEST time regardless of host load.
 s = s.replace("void gui_do_stuff(bool wait)\n{\n}",
               "void gui_do_stuff(bool wait)\n{\n    (void)wait;\n    nremote_bridge_tick();\n}", 1)
+
+# Debugger wiring: feed Firebird's native debugger from the bridge instead of
+# stdin, capture what it prints, and track whether the guest is halted.
+s = s.replace(
+  "void gui_debug_vprintf(const char *fmt, va_list ap)\n{\n    vprintf(fmt, ap);\n}",
+  "void gui_debug_vprintf(const char *fmt, va_list ap)\n{\n"
+  "    char buf[4096];\n"
+  "    int n = vsnprintf(buf, sizeof(buf), fmt, ap);\n"
+  "    if (n > 0) {\n"
+  "        if (n > (int)sizeof(buf) - 1) n = (int)sizeof(buf) - 1;\n"
+  "        nremote_dbg_output(buf, n);\n"
+  "    }\n"
+  "    fputs(buf, stdout);\n}", 1)
+
+s = s.replace(
+  "void gui_debugger_entered_or_left(bool entered) {}",
+  "void gui_debugger_entered_or_left(bool entered) { nremote_dbg_entered(entered); }", 1)
+
+s = s.replace(
+  """void gui_debugger_request_input(debug_input_cb callback)
+{
+    if(!callback) return;
+    static char debug_in[40];
+    fgets(debug_in, sizeof(debug_in), stdin);
+    callback(debug_in);
+}""",
+  """void gui_debugger_request_input(debug_input_cb callback)
+{
+    // Commands come from the nRemote bridge, not stdin. Returning without
+    // calling back is normal: the debugger waits 100 ms and asks again,
+    // running gui_do_stuff() (and so our tick) while it waits.
+    // Store it and return, exactly as the Qt front end does: the debugger
+    // then waits on a condition variable (releasing its input mutex) and the
+    // bridge's socket thread invokes the callback when a command arrives.
+    // Calling it inline here would deadlock on that mutex.
+    nremote_dbg_set_callback((void *)callback);
+}""", 1)
 
 # Headless stubs this as a no-op, so nothing ever throttles: the guest clock
 # races, its auto-power-down fires constantly, and input timing goes haywire.

@@ -23,6 +23,9 @@ One socket, plain-text control lines, one length-prefixed PNG for the screen:
 | `SAVEFLASH <path>\n`      | `SAVED <rc>\n` (persist the copy-on-write NAND) |
 | `TOUCH <x> <y> <contact> <down>\n` | `OK\n` (raw touchpad state, for tuning) |
 | `STATUS\n`                | `USBLINK <0\|1>\n`                   |
+| `HALT\n`                  | `OK\n` (halt into the debugger)      |
+| `DBGSTATE\n`              | `HALTED <0\|1>\n`                    |
+| `DBG <command>\n`         | `OUT <len>\n` then `<len>` bytes of debugger output |
 
 `OS` and `PUT` go through Firebird's `usblink` queue (drained by the emulation
 loop), so they only act once `STATUS` reports `USBLINK 1`. `OS` is what gets a
@@ -110,6 +113,45 @@ here:
 | `~shift_<x>~`      | shift held + `<x>`               |
 | `~up/down/left/right~` | touchpad press at that edge   |
 | `~shift_grab~`     | touchpad press-hold (select)      |
+
+## Debugger
+
+`HALT` sets `EVENT_DEBUG_STEP`, which makes the CPU enter Firebird's own native
+debugger at the next instruction boundary (the same way the gdb stub halts).
+`DBG <command>` then runs any of that debugger's commands and returns whatever
+it printed, so nRemote gets the whole thing without reimplementing any of it:
+
+| command | what you get |
+| --- | --- |
+| `r` | all registers, CPSR decoded (flags, IRQ/FIQ, Thumb, mode), SPSR |
+| `u [addr]` | disassembly (`ua` forces ARM, `ut` forces Thumb) |
+| `d <addr>` | memory dump, hex and ASCII |
+| `b` | stack backtrace |
+| `k <addr> <+x\|+r\|+w\|-x\|-r\|-w>` | set/clear an exec, read or write breakpoint |
+| `k` | list breakpoints |
+| `s` / `n` / `c` | step, step over, continue |
+| `mmu` | dump the MMU page tables |
+| `ss <addr> <len> <string>` | search memory |
+| `pr <addr>` / `pw <addr> <val>` | peek / poke |
+| `rs <regnum> <val>` | change a register |
+
+**How the hand-off works, because it is not obvious.** The debugger runs on the
+emulation thread and blocks in `native_debugger()`. It asks for a command
+through `gui_debugger_request_input()`, whose contract (see Firebird's own
+`emuthread.cpp`) is to **store the callback and return immediately** - the
+debugger then waits on a condition variable, releasing its input mutex, and
+expects *another* thread to invoke that callback. Calling it inline deadlocks on
+that mutex; never calling it leaves the debugger waiting forever. So the bridge
+stores it and the socket thread invokes it.
+
+Output is captured by hooking `gui_debug_vprintf`. A command is finished when
+the debugger asks for the next one, or when it leaves the debugger entirely
+(which `c` and `s` do). Every wait has a timeout, so a wedged emulator gives an
+error rather than a hung UI.
+
+While halted, `native_debugger()` still calls `gui_do_stuff()` every 100 ms, so
+the bridge tick and the socket threads keep running and the screen stays
+fetchable.
 
 ## Arrow keys: two things that are easy to get wrong
 

@@ -54,6 +54,25 @@
 #endif
 
 /* ---- Firebird core API we drive (see core/keypad.h, core/lcd.h) ---- */
+/*
+ * Debugger access. Firebird already has a full native debugger (core/debug.c):
+ * registers, memory dump, disassembly, stack backtrace, read/write/exec
+ * breakpoints, single step, MMU tables, memory search. Rather than reimplement
+ * any of that we drive it, exactly the way the Qt front end does.
+ *
+ * The mechanics, which drive the design below:
+ *   - The debugger runs ON THE EMULATION THREAD. native_debugger() blocks in a
+ *     loop asking the GUI for a command through gui_debugger_request_input().
+ *   - That loop calls gui_do_stuff() every 100 ms while it waits, so our tick
+ *     keeps running and the socket threads stay alive while the guest is halted.
+ *   - Setting EVENT_DEBUG_STEP in cpu_events makes the CPU enter the debugger
+ *     at the next instruction boundary. That is how the gdb stub halts, and it
+ *     is safer than calling debugger() ourselves from an arbitrary point.
+ */
+extern uint32_t cpu_events __asm__("cpu_events");
+#define BR_EVENT_DEBUG_STEP 8       /* EVENT_DEBUG_STEP, core/emu.h */
+extern bool in_debugger;            /* core/debug.h */
+
 extern void keypad_set_key(int row, int col, bool state);
 extern void keypad_on_pressed(void);
 extern void touchpad_set_state(float x, float y, bool contact, bool down);
@@ -176,6 +195,31 @@ static void tap_matrix(int row, int col, int mod_row, int mod_col) {
     bridge_unlock();
 }
 
+/* ---- debugger state (used by nremote_bridge_tick below) ---- */
+#define DBG_CMD_MAX 240
+
+#ifndef _WIN32
+static pthread_mutex_t dbg_m  = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  dbg_cv = PTHREAD_COND_INITIALIZER;
+#define DBG_LOCK()   pthread_mutex_lock(&dbg_m)
+#define DBG_UNLOCK() pthread_mutex_unlock(&dbg_m)
+#else
+#define DBG_LOCK()
+#define DBG_UNLOCK()
+#endif
+
+typedef void (*br_debug_cb)(const char *);
+static br_debug_cb dbg_cb = NULL;   /* set while the debugger wants a command */
+static char   dbg_cmd[DBG_CMD_MAX];
+static int    dbg_cmd_pending = 0;   /* a command is waiting to be handed over */
+static int    dbg_busy = 0;          /* a socket thread owns the debugger */
+static int    dbg_done = 0;          /* its output is complete */
+static int    dbg_capture = 0;       /* currently collecting output */
+static char  *dbg_buf = NULL;
+static size_t dbg_len = 0, dbg_cap = 0;
+static int    dbg_halt_request = 0;
+static int    dbg_entered = 0;       /* guest is halted in the debugger */
+
 /*
  * Arrow presses are queued here and applied by nremote_bridge_tick() on the
  * emulation thread, NOT held with a sleep on this thread.
@@ -230,6 +274,15 @@ static void tap_touchpad(float x, float y) {
  * on a socket thread, which is where it belongs.
  */
 void nremote_bridge_tick(void) {
+    /* A HALT asked for from a socket thread is applied here, on the emulation
+     * thread. cpu_events is how the gdb stub does it too: the CPU notices at
+     * the next instruction boundary and enters the debugger itself, rather
+     * than us calling debugger() from the middle of a throttle callback. */
+    if (dbg_halt_request && !in_debugger) {
+        dbg_halt_request = 0;
+        cpu_events |= BR_EVENT_DEBUG_STEP;
+    }
+
     if (br_pressed) {
         if (--br_hold <= 0) {
             touchpad_set_state(br_cur_x, br_cur_y, false, false);   /* release */
@@ -323,6 +376,158 @@ static bool handle_key(const char *raw) {
 
     fprintf(stderr, "nremote_bridge: unknown key '%s'\n", raw);
     return false;
+}
+
+/* =====================================================================
+ * Debugger bridge
+ *
+ * A socket thread posts a command and blocks. The emulation thread, sitting
+ * inside native_debugger(), collects it through nremote_dbg_take_command(),
+ * and everything the debugger prints while running it is captured by
+ * nremote_dbg_output() (wired to gui_debug_vprintf). The socket thread is woken
+ * when the command finishes, which we detect either when the debugger asks for
+ * the NEXT command or when it leaves the debugger entirely (as "c" and "s" do).
+ *
+ * Nothing here ever blocks the emulation thread: it only ever takes a mutex
+ * briefly. The socket side always waits with a timeout, so a wedged or
+ * never-halting emulator degrades to an error instead of a hung UI.
+ * ===================================================================== */
+
+
+/* Append captured debugger output. Called on the emulation thread. */
+void nremote_dbg_output(const char *text, int n) {
+    if (!text || n <= 0) return;
+    DBG_LOCK();
+    if (dbg_capture) {
+        if (dbg_len + (size_t)n + 1 > dbg_cap) {
+            size_t want = (dbg_len + (size_t)n + 1) * 2;
+            char *nb = (char *)realloc(dbg_buf, want);
+            if (nb) { dbg_buf = nb; dbg_cap = want; }
+        }
+        if (dbg_buf && dbg_len + (size_t)n + 1 <= dbg_cap) {
+            memcpy(dbg_buf + dbg_len, text, (size_t)n);
+            dbg_len += (size_t)n;
+            dbg_buf[dbg_len] = '\0';
+        }
+    }
+    DBG_UNLOCK();
+}
+
+/* Finish the in-flight command, if any. Caller holds the lock. */
+static void dbg_finish_locked(void) {
+    if (dbg_busy && dbg_capture) {
+        dbg_capture = 0;
+        dbg_done = 1;
+#ifndef _WIN32
+        pthread_cond_broadcast(&dbg_cv);
+#endif
+    }
+}
+
+/*
+ * Called from gui_debugger_request_input() on the emulation thread.
+ *
+ * The contract is the one Firebird's Qt front end implements: STORE the
+ * callback and return immediately. The debugger then waits on a condition
+ * variable, releasing its input mutex, and expects some other thread to invoke
+ * the callback when a command is available. Calling it inline from here would
+ * deadlock on that mutex, and never calling it leaves the debugger waiting
+ * forever.
+ *
+ * A non-NULL callback also means the previous command has finished printing,
+ * because the debugger only asks again after process_debug_cmd() returned.
+ */
+void nremote_dbg_set_callback(void *cb) {
+    DBG_LOCK();
+    dbg_cb = (br_debug_cb)cb;
+    if (cb) dbg_finish_locked();
+    DBG_UNLOCK();
+}
+
+/* Called from gui_debugger_entered_or_left() on the emulation thread. */
+void nremote_dbg_entered(int entered) {
+    DBG_LOCK();
+    dbg_entered = entered ? 1 : 0;
+    if (!entered) dbg_finish_locked();   /* "c" and "s" leave the debugger */
+    DBG_UNLOCK();
+}
+
+/* Run one debugger command and send whatever it printed. Socket thread. */
+static void handle_dbg(int fd, const char *cmd) {
+    char hdr[48];
+    int hn, waited = 0;
+    br_debug_cb cb = NULL;
+    size_t n;
+    char *copy;
+
+    DBG_LOCK();
+    if (!dbg_entered) {
+        DBG_UNLOCK();
+        send(fd, "ERR not halted\n", 15, 0);
+        return;
+    }
+    if (dbg_busy) {
+        DBG_UNLOCK();
+        send(fd, "ERR busy\n", 9, 0);
+        return;
+    }
+    dbg_busy = 1;
+    dbg_done = 0;
+    dbg_len = 0;
+    if (dbg_buf) dbg_buf[0] = '\0';
+    snprintf(dbg_cmd, sizeof(dbg_cmd), "%s", cmd);
+    dbg_capture = 1;
+    cb = dbg_cb;
+    DBG_UNLOCK();
+
+    /* The debugger sets its callback while it waits for input. If it has not
+     * asked yet, give it a moment rather than dropping the command. */
+    while (!cb && waited < 2000) {
+        BR_SLEEP_MS(20);
+        waited += 20;
+        DBG_LOCK();
+        cb = dbg_cb;
+        DBG_UNLOCK();
+    }
+
+    if (cb) {
+        /* Hand the command over from THIS thread, which is what the debugger
+         * is waiting for. Not under our lock: the callback takes Firebird's
+         * own input mutex and we must not hold anything it might need. */
+        cb(dbg_cmd);
+    }
+
+    DBG_LOCK();
+    if (cb) {
+#ifndef _WIN32
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += 5;                    /* never hang the UI */
+        while (!dbg_done) {
+            if (pthread_cond_timedwait(&dbg_cv, &dbg_m, &ts) != 0) break;
+        }
+#endif
+    }
+    n = dbg_len;
+    copy = (char *)malloc(n + 1);
+    if (copy) { memcpy(copy, dbg_buf ? dbg_buf : "", n); copy[n] = '\0'; }
+    dbg_capture = 0;
+    dbg_cmd_pending = 0;
+    dbg_busy = 0;
+    dbg_len = 0;
+    DBG_UNLOCK();
+
+    hn = snprintf(hdr, sizeof(hdr), "OUT %lu\n", (unsigned long)n);
+    send(fd, hdr, hn, 0);
+    if (copy && n) {
+        size_t off = 0;
+        while (off < n) {
+            int w = (int)send(fd, copy + off, (int)(n - off), 0);
+            if (w <= 0) break;
+            off += (size_t)w;
+        }
+    }
+    free(copy);
 }
 
 /* ---------- minimal grayscale PNG encoder (uses zlib) ---------- */
@@ -478,6 +683,21 @@ static void serve_client(int fd) {
                 } else {
                     send(fd, "ERR\n", 4, 0);
                 }
+            } else if (strcmp(line, "HALT") == 0) {
+                /* Enter the debugger at the next instruction boundary. */
+                DBG_LOCK();
+                if (!dbg_entered) dbg_halt_request = 1;
+                DBG_UNLOCK();
+                send(fd, "OK\n", 3, 0);
+            } else if (strcmp(line, "DBGSTATE") == 0) {
+                char b[32];
+                int bn;
+                DBG_LOCK();
+                bn = snprintf(b, sizeof(b), "HALTED %d\n", dbg_entered);
+                DBG_UNLOCK();
+                send(fd, b, bn, 0);
+            } else if (strncmp(line, "DBG ", 4) == 0) {
+                handle_dbg(fd, line + 4);
             } else if (strcmp(line, "STATUS") == 0) {
                 char b[48];
                 int bn = snprintf(b, sizeof(b), "USBLINK %d\n", nremote_usblink_ready());
