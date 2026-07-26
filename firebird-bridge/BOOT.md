@@ -28,18 +28,33 @@ Verified on Linux (WSL2), g++ / make / zlib, no Qt, against a real dumped boot1:
   registers directly, so it can answer pre-OS prompts that ignore OS-level key
   events.
 
+- **The OS installs and boots, and nRemote drives it.** First boot shows
+  "Factory image found. Press 'I' to install"; sending `KEY i` runs the install,
+  then the OS comes up in its language / font size / welcome wizard (`~tab~`
+  then `~enter~` on each) and lands on the Home screen. Verified by typing into
+  the real nRemote GUI in `--emulator` mode: `a` opened the Scratchpad and
+  `2+2` returned `4`, with the live screen mirrored in the faceplate.
+- **`SAVEFLASH <path>` makes it permanent.** After the first-boot install, save
+  the NAND and that flash boots straight to the OS in about 20 seconds.
+
+## Gotchas worth knowing
+
+- The headless runner stubs `throttle_timer_wait()` as a no-op, so it never
+  throttles no matter what `turbo_mode` says: the guest clock races and its
+  auto-power-down fires constantly (`Received TI_OFFSYNC_APD_REQ` + reset).
+  Implement it as `usleep(usec)`. Even then the "Press 'I'" prompt can cycle,
+  so send `KEY i` every few seconds until the install starts.
+- Firebird maps the NAND copy-on-write, so **an installed OS is lost on exit**
+  unless you `SAVEFLASH`.
+- Run the nRemote GUI wherever you have a headful JRE. On WSL2 the bridge can
+  live in Linux and the GUI on Windows: localhost forwarding lets Windows reach
+  `127.0.0.1:3334` inside WSL. (Many Linux JDK packages are headless-only.)
+
 ## Still to finish
 
-- Getting the OS all the way installed: after the factory-image step boot2 can
-  report `Error loading OS image. Removing OS remnants.` and land on
-  "Operating System not found. Install OS now.". The bridge's `OS <path.tno>`
-  command streams an OS over the emulated USB link (Firebird's `usblink` queue)
-  to get past this; see `README.md`.
-- `turbo_mode` is on in the headless runner, so the guest's auto-power-down
-  timer fires in seconds of wall clock: expect periodic
-  `Received TI_OFFSYNC_APD_REQ` + reset. Send a key periodically to keep it
-  awake, or drop turbo.
 - Wiring `bridge_lock` / `bridge_unlock` to Firebird's emulation-thread guard.
+- Re-checking the three composite keys (`~ctrl_home~` / `~ctrl_0~` / `~ctrl_*~`)
+  now that a booted OS is available to test them against.
 
 ## 1. Build
 
