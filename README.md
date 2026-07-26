@@ -23,14 +23,8 @@ Mirror its live screen, click an accurate on-screen faceplate, or just type on y
 - 🖥️ **Live screen mirroring.** See the handheld's display update as you work.
 - 🎛️ **Clickable faceplate.** An accurate picture of the TI-Nspire Touchpad; click any key. *(`--faceplate`)*
 - ⌨️ **Type on your keyboard.** A→A, 1→1, Enter, arrows, Ctrl/Shift, and the rest go straight to the calculator.
-- 🟢 **Debugger (emulator only).** Add `--debugger` alongside `--emulator` to open a
-debugger window for the emulated handheld: registers with the values that just
-changed highlighted, live disassembly, a memory view, the stack, and read/write/
-execute breakpoints. It drives [Firebird](https://github.com/nspire-emus/firebird)'s
-own debugger, so a console pane accepts any of its commands too. See
-[`docs/EMULATION.md`](docs/EMULATION.md).
-
-**Sticky Ctrl and Shift.** Click a modifier to arm it for the next key (armed keys glow green on the faceplate), matching the handheld.
+- 🟢 **Sticky Ctrl and Shift.** Click a modifier to arm it for the next key (armed keys glow green on the faceplate), matching the handheld.
+- 🐞 **Built-in debugger** for the emulated handheld: registers, disassembly, memory, stack and breakpoints. *(`--emulator --debugger`)*
 - ⏺️ **Record and replay** key sequences to a file.
 - 📁 **Drag and drop** `.tns` files onto the window to transfer them.
 - 👥 **One or many** handhelds. Send to all connected devices, or a selected subset.
@@ -89,6 +83,8 @@ The handheld's screen is shown in real time, including menus, dialogs, and calcu
    ```
 
 **Sticky Ctrl and Shift.** On both the faceplate and the text keyboard, **ctrl** and **shift** are *sticky*: click one and it arms for the **next** key, then clears itself, exactly like pressing the modifier on the handheld. So `ctrl` then `esc` sends the handheld's ctrl-esc, and `shift` then `a` types a capital `A`. On the faceplate an armed modifier turns **green**. This is how most calculator emulator front-ends behave, so there is no key to hold down.
+
+**Debugger (emulator only).** With `--emulator`, adding `--debugger` opens a window onto the emulated machine: the register file with values that changed since the last stop highlighted, live disassembly at the PC, a memory view, the stack, and read/write/execute breakpoints. Halt, Continue, Step and Step Over are on the toolbar, double-clicking a disassembly line toggles a breakpoint, and a console pane takes any [Firebird](https://github.com/nspire-emus/firebird) debugger command directly. See [`docs/EMULATION.md`](docs/EMULATION.md).
 
 **Hover to learn the keys.** On the faceplate, rest the pointer over any key to see a tooltip of what it does (the ctrl/shift tooltips also explain the sticky behaviour). A few keys that the handheld firmware ignores over the link, such as `e^x`, say so in their tooltip.
 
