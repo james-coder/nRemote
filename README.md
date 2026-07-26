@@ -130,6 +130,7 @@ jar cfm nRemote.jar src/META-INF/MANIFEST.MF -C build .
 <details>
 <summary>Full version history</summary>
 
+- **v1.15.0** (Fork). Emulator backend. `--emulator[=host:port]` points nRemote at an emulated TI-Nspire ([Firebird](https://github.com/nspire-emus/firebird)) instead of a physical handheld, through the same GUI: the faceplate mirrors the emulated screen and sends it keys. Ships the Firebird-side bridge, the flash tooling, and a guided dumper (`tests/hardware/DumpBoot1.java`) for getting boot1 off your own handheld, which is the one piece nobody can download. The normal USB path is untouched when the flag is off. See [`docs/EMULATION.md`](docs/EMULATION.md).
 - **v1.14.0** (Fork). The faceplate is now self-documenting: hover any key for a tooltip of what it does, and the ctrl and shift keys explain that they are sticky. The text keyboard's ctrl and shift gained the same tooltips, and the sticky behaviour is now described in the readme's Usage section.
 - **v1.13.0** (Fork). Sticky ctrl and shift on the faceplate: clicking either arms it (shown with a green highlight) so it applies to the next key, then clears, matching the handheld's modifier behaviour and typical emulator front-ends.
 - **v1.12.0** (Fork). Releases are the single download source, published automatically from the `VERSION` file. Added a calculator-free CI test for the faceplate and an on-device test harness.
