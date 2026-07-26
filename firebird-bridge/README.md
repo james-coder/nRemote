@@ -22,6 +22,8 @@ One socket, plain-text control lines, one length-prefixed PNG for the screen:
 | `KEY <nRemote-name>\n`    | `OK\n`                               |
 | `OS <path-to-.tno>\n`     | `OK\n` (installs an OS over the emulated USB link) |
 | `PUT <local>::<remote>\n` | `OK\n` (pushes a file to the emulated device) |
+| `SAVEFLASH <path>\n`      | `SAVED <rc>\n` (persist the copy-on-write NAND) |
+| `TOUCH <x> <y> <contact> <down>\n` | `OK\n` (raw touchpad state, for tuning) |
 | `STATUS\n`                | `USBLINK <0\|1>\n`                   |
 
 `OS` and `PUT` go through Firebird's `usblink` queue (drained by the emulation
@@ -104,6 +106,31 @@ here:
 | `~shift_<x>~`      | shift held + `<x>`               |
 | `~up/down/left/right~` | touchpad edge tap             |
 | `~shift_grab~`     | touchpad press-hold (select)      |
+
+## Arrow keys: two things that are easy to get wrong
+
+Both of these were found by measuring against a booted OS, stepping through a
+file list and reading back which row was selected.
+
+**Hold time.** The guest OS does its own key auto-repeat while a direction is
+held, and it starts fast. Measured, one press of "down":
+
+| hold | result |
+| --- | --- |
+| 8, 10, 12 ms | exactly one item, 5 times out of 5 |
+| 15 ms | double-stepped once in 5 |
+| 20, 30, 40 ms | always two items |
+
+So a 30 ms hold makes every arrow skip an item. `BR_ARROW_HOLD_MS` is 10 ms.
+Ordinary matrix keys are unaffected and still use `BR_TAP_MS`.
+
+**Which coordinates.** An arrow is a press at the **extreme** edge with contact
+and down set together, exactly as Firebird's own `qtkeypadbridge.cpp` does it.
+Do not slide the finger across the pad instead: that path drives the relative
+registers, which the guest reads as a signed byte, so a large move wraps and the
+selection jumps or reverses. Also note `touchpad_set_state` flips the y axis
+(`new_y = MAX - y*MAX`), so `y=0` is the top of the pad; getting that backwards
+silently swaps up and down.
 
 ## To re-check on a booted image
 

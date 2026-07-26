@@ -124,13 +124,40 @@ static const KeyPos *lookup_key(const char *tok) {
     return NULL;
 }
 
-/* Touchpad edge tap for the four navigation directions. Center-click is not
- * handled here: nRemote already sends center-click as "~enter~". */
+/*
+ * How long an arrow "press" is held, in milliseconds.
+ *
+ * This is much shorter than BR_TAP_MS and the difference matters. The guest OS
+ * does its own key auto-repeat while a touchpad direction is held (Firebird's
+ * own input code notes "calc os must handle it on its own"), and the repeat
+ * starts quickly. Measured against a booted OS by stepping through a file list:
+ *
+ *     8 ms, 10 ms, 12 ms  ->  exactly one item, 5 times out of 5
+ *     15 ms               ->  double-stepped 1 time in 5
+ *     20 ms, 30 ms, 40 ms ->  always two items
+ *
+ * So a 30 ms hold makes every arrow skip an item. 10 ms sits comfortably below
+ * the repeat threshold while still being long enough to register every time.
+ */
+#define BR_ARROW_HOLD_MS 10
+
+/*
+ * Where the "finger" lands for each direction, as 0..1 fractions of the pad.
+ * These are the extremes, matching Firebird's own keyboard-arrow handler
+ * (qtkeypadbridge.cpp), which sets x or y to 0 or TOUCHPAD_*_MAX and the other
+ * axis to the midpoint.
+ *
+ * Note the y axis is flipped on the way in: touchpad_set_state computes
+ * new_y = MAX - y*MAX, so y=0 here is the TOP of the pad (up) and y=1 is the
+ * bottom (down). Getting that backwards silently inverts up and down.
+ *
+ * Center-click is not handled here: nRemote already sends it as "~enter~".
+ */
 static bool touchpad_dir(const char *tok, float *x, float *y) {
-    if (!strcmp(tok, "up"))    { *x = 0.5f; *y = 0.9f; return true; }
-    if (!strcmp(tok, "down"))  { *x = 0.5f; *y = 0.1f; return true; }
-    if (!strcmp(tok, "left"))  { *x = 0.1f; *y = 0.5f; return true; }
-    if (!strcmp(tok, "right")) { *x = 0.9f; *y = 0.5f; return true; }
+    if (!strcmp(tok, "up"))    { *x = 0.5f; *y = 0.0f; return true; }
+    if (!strcmp(tok, "down"))  { *x = 0.5f; *y = 1.0f; return true; }
+    if (!strcmp(tok, "left"))  { *x = 0.0f; *y = 0.5f; return true; }
+    if (!strcmp(tok, "right")) { *x = 1.0f; *y = 0.5f; return true; }
     return false;
 }
 
@@ -147,20 +174,23 @@ static void tap_matrix(int row, int col, int mod_row, int mod_col) {
     bridge_unlock();
 }
 
-/* An arrow press on a Touchpad model is a CLICK on the edge of the pad, not a
- * resting finger: the guest only treats it as a direction key when down=true.
- * (contact=true, down=false just moves the pointer and dialogs ignore it.) */
+/*
+ * One arrow step. Press means contact AND down together at the extreme edge,
+ * release means both false, exactly as Firebird's own arrow-key handler does
+ * it. The hold has to be brief or the guest's key repeat turns one press into
+ * several (see BR_ARROW_HOLD_MS).
+ *
+ * A slow slide across the pad is NOT the way to do this: that path drives the
+ * relative registers, which the guest reads as a signed byte, so a large move
+ * wraps and the selection jumps or goes the wrong way.
+ */
 static void tap_touchpad(float x, float y) {
     bridge_lock();
-    touchpad_set_state(x, y, true, true);       /* finger on pad, pad clicked */
+    touchpad_set_state(x, y, true, true);       /* press at the edge */
     bridge_unlock();
-    BR_SLEEP_MS(BR_TAP_MS);
+    BR_SLEEP_MS(BR_ARROW_HOLD_MS);
     bridge_lock();
-    touchpad_set_state(x, y, true, false);      /* release the click */
-    bridge_unlock();
-    BR_SLEEP_MS(BR_TAP_MS / 2);
-    bridge_lock();
-    touchpad_set_state(0.f, 0.f, false, false); /* lift off */
+    touchpad_set_state(x, y, false, false);     /* release */
     bridge_unlock();
 }
 
@@ -369,6 +399,20 @@ static void serve_client(int fd) {
                 int bn = snprintf(b, sizeof(b), "SAVED %d\n",
                                   nremote_save_flash(line + 10));
                 send(fd, b, bn, 0);
+            } else if (strncmp(line, "TOUCH ", 6) == 0) {
+                /* Raw touchpad state: "TOUCH <x> <y> <contact> <down>", with x
+                 * and y as 0..1 fractions of the pad. For tuning and debugging
+                 * the arrow behaviour, which is derived from relative motion. */
+                float tx = 0.f, ty = 0.f;
+                int tc = 0, td = 0;
+                if (sscanf(line + 6, "%f %f %d %d", &tx, &ty, &tc, &td) == 4) {
+                    bridge_lock();
+                    touchpad_set_state(tx, ty, tc != 0, td != 0);
+                    bridge_unlock();
+                    send(fd, "OK\n", 3, 0);
+                } else {
+                    send(fd, "ERR\n", 4, 0);
+                }
             } else if (strcmp(line, "STATUS") == 0) {
                 char b[48];
                 int bn = snprintf(b, sizeof(b), "USBLINK %d\n", nremote_usblink_ready());
@@ -390,6 +434,15 @@ static void serve_client(int fd) {
 /* ---------- accept loop (run on its own thread) ---------- */
 static int g_port = 3334;
 
+#ifndef _WIN32
+static void *client_thread(void *arg) {
+    int fd = *(int *)arg;
+    free(arg);
+    serve_client(fd);
+    return NULL;
+}
+#endif
+
 static void bridge_accept_loop(void) {
 #ifdef _WIN32
     WSADATA wsa; WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -406,12 +459,31 @@ static void bridge_accept_loop(void) {
     if (bind(srv, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("nremote_bridge: bind"); BR_CLOSE(srv); return;
     }
-    listen(srv, 1);
+    listen(srv, 4);
     fprintf(stderr, "nremote_bridge: listening on 127.0.0.1:%d\n", g_port);
     for (;;) {
         int cl = (int)accept(srv, NULL, NULL);
         if (cl < 0) continue;
-        serve_client(cl);   /* one client at a time is plenty for nRemote */
+        /* One connection must not lock everyone else out: nRemote holds its
+         * socket open for the whole session, and a client that dies without
+         * closing cleanly would otherwise make the port unusable until the
+         * emulator is restarted. */
+#ifdef _WIN32
+        serve_client(cl);
+#else
+        {
+            pthread_t th;
+            int *arg = (int *)malloc(sizeof(int));
+            if (!arg) { BR_CLOSE(cl); continue; }
+            *arg = cl;
+            if (pthread_create(&th, NULL, client_thread, arg) != 0) {
+                free(arg);
+                serve_client(cl);   /* fall back to inline handling */
+            } else {
+                pthread_detach(th);
+            }
+        }
+#endif
     }
 }
 
