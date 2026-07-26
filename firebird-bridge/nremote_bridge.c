@@ -125,21 +125,23 @@ static const KeyPos *lookup_key(const char *tok) {
 }
 
 /*
- * How long an arrow "press" is held, in milliseconds.
+ * Why arrow presses have to be short, and measured in GUEST time.
  *
- * This is much shorter than BR_TAP_MS and the difference matters. The guest OS
- * does its own key auto-repeat while a touchpad direction is held (Firebird's
- * own input code notes "calc os must handle it on its own"), and the repeat
- * starts quickly. Measured against a booted OS by stepping through a file list:
+ * The guest OS does its own key auto-repeat while a touchpad direction is held
+ * (Firebird's own input code notes "calc os must handle it on its own"), and
+ * the repeat starts fast. Measured against a booted OS by stepping a file list
+ * and reading back the selected row:
  *
  *     8 ms, 10 ms, 12 ms  ->  exactly one item, 5 times out of 5
  *     15 ms               ->  double-stepped 1 time in 5
  *     20 ms, 30 ms, 40 ms ->  always two items
  *
- * So a 30 ms hold makes every arrow skip an item. 10 ms sits comfortably below
- * the repeat threshold while still being long enough to register every time.
+ * Those are guest milliseconds. Holding for the same span of WALL-CLOCK time
+ * does not work, because the emulator throttles in 10 ms slices of virtual
+ * time and runs flat out inside each slice: how much guest time a wall-clock
+ * hold covers depends on host load. See the queue below, which counts virtual
+ * slices instead and so behaves identically whatever else is running.
  */
-#define BR_ARROW_HOLD_MS 10
 
 /*
  * Where the "finger" lands for each direction, as 0..1 fractions of the pad.
@@ -175,23 +177,86 @@ static void tap_matrix(int row, int col, int mod_row, int mod_col) {
 }
 
 /*
- * One arrow step. Press means contact AND down together at the extreme edge,
- * release means both false, exactly as Firebird's own arrow-key handler does
- * it. The hold has to be brief or the guest's key repeat turns one press into
- * several (see BR_ARROW_HOLD_MS).
+ * Arrow presses are queued here and applied by nremote_bridge_tick() on the
+ * emulation thread, NOT held with a sleep on this thread.
  *
- * A slow slide across the pad is NOT the way to do this: that path drives the
- * relative registers, which the guest reads as a signed byte, so a large move
- * wraps and the selection jumps or goes the wrong way.
+ * Sleeping here does not work. The emulator throttles in 10 ms slices of
+ * VIRTUAL time: between throttle points the guest runs as fast as the host
+ * allows, then sleeps whatever is left of the slice. So a wall-clock hold
+ * covers an unpredictable amount of guest time, which decides how many
+ * auto-repeats the guest sees. Load the host (nRemote polling SHOT for the
+ * screen, say) and the same hold suddenly spans a different amount of guest
+ * time, so arrows move one item sometimes and race away other times.
+ *
+ * Counting virtual quanta instead makes the hold exactly one 10 ms slice of
+ * guest time every single press, whatever the host is doing.
  */
+#define BR_ARROW_HOLD_QUANTA 1   /* press lasts one 10 ms virtual slice */
+#define BR_ARROW_GAP_QUANTA  1   /* idle slice after release, so presses separate */
+#define BR_ARROW_QUEUE 32
+
+static struct { float x, y; } br_queue[BR_ARROW_QUEUE];
+static int br_q_head = 0, br_q_tail = 0;
+static int br_hold = 0, br_gap = 0;
+static bool br_pressed = false;
+static float br_cur_x = 0.f, br_cur_y = 0.f;
+
+#ifndef _WIN32
+static pthread_mutex_t br_q_mut = PTHREAD_MUTEX_INITIALIZER;
+#define BR_QLOCK()   pthread_mutex_lock(&br_q_mut)
+#define BR_QUNLOCK() pthread_mutex_unlock(&br_q_mut)
+#else
+#define BR_QLOCK()
+#define BR_QUNLOCK()
+#endif
+
 static void tap_touchpad(float x, float y) {
-    bridge_lock();
-    touchpad_set_state(x, y, true, true);       /* press at the edge */
-    bridge_unlock();
-    BR_SLEEP_MS(BR_ARROW_HOLD_MS);
-    bridge_lock();
-    touchpad_set_state(x, y, false, false);     /* release */
-    bridge_unlock();
+    BR_QLOCK();
+    int next = (br_q_tail + 1) % BR_ARROW_QUEUE;
+    if (next != br_q_head) {            /* drop silently if the queue is full */
+        br_queue[br_q_tail].x = x;
+        br_queue[br_q_tail].y = y;
+        br_q_tail = next;
+    }
+    BR_QUNLOCK();
+}
+
+/*
+ * Called from the emulation thread once per virtual 10 ms slice (wired up from
+ * gui_do_stuff). Applies at most one state change per slice, so a press always
+ * lasts exactly BR_ARROW_HOLD_QUANTA slices of guest time.
+ *
+ * This also means touchpad_set_state runs on the emulation thread rather than
+ * on a socket thread, which is where it belongs.
+ */
+void nremote_bridge_tick(void) {
+    if (br_pressed) {
+        if (--br_hold <= 0) {
+            touchpad_set_state(br_cur_x, br_cur_y, false, false);   /* release */
+            br_pressed = false;
+            br_gap = BR_ARROW_GAP_QUANTA;
+        }
+        return;
+    }
+    if (br_gap > 0) { br_gap--; return; }
+
+    float x = 0.f, y = 0.f;
+    bool have = false;
+    BR_QLOCK();
+    if (br_q_head != br_q_tail) {
+        x = br_queue[br_q_head].x;
+        y = br_queue[br_q_head].y;
+        br_q_head = (br_q_head + 1) % BR_ARROW_QUEUE;
+        have = true;
+    }
+    BR_QUNLOCK();
+    if (have) {
+        touchpad_set_state(x, y, true, true);   /* press at the extreme edge */
+        br_cur_x = x;
+        br_cur_y = y;
+        br_pressed = true;
+        br_hold = BR_ARROW_HOLD_QUANTA;
+    }
 }
 
 /*

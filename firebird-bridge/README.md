@@ -1,16 +1,14 @@
-# Firebird bridge for nRemote (draft)
+# Firebird bridge for nRemote
 
 This folder holds the **Firebird side** of the emulator backend (issue #19): a
 small TCP server that lets the nRemote GUI drive an emulated TI-Nspire instead of
 a physical handheld. The nRemote side is `src/EmulatorBridge.java`; the design is
 in [`../docs/EMULATION.md`](../docs/EMULATION.md).
 
-`nremote_bridge.c` is a **reviewed draft**. It is written against Firebird's real
-core API and the exact key matrix from Firebird's `keymap.h`, and its two tricky
-parts are tested (the key decode against the matrix, the PNG output against Java
-`ImageIO`). It has **not** been compiled into Firebird or run against a booted
-OS, because that needs a Firebird build and a bootable flash (still blocked on a
-`manuf` image).
+`nremote_bridge.c` is written against Firebird's real core API and the exact key
+matrix from Firebird's `keymap.h`. It is built into Firebird's headless target
+and has been run against a booted OS: the nRemote GUI mirrors the emulated
+screen and drives it, and `2+2` evaluates on the emulated handheld.
 
 ## What it does
 
@@ -52,12 +50,18 @@ target (no Qt needed) and has been verified to build. The steps it automates:
    // ...then in main(), after emu_start() and before emu_loop():
    nremote_bridge_start(3334);
    ```
+   Also call `nremote_bridge_tick()` from `gui_do_stuff()`. The core calls that
+   once per virtual 10 ms slice on the emulation thread, and the bridge uses it
+   to apply queued arrow presses in guest time (see the arrow notes below).
+   Without it, arrows never fire.
 3. **Thread safety.** Firebird's core runs on the emulation thread and is not
-   thread-safe. The bridge serves clients on its own thread and wraps every core
-   call in `bridge_lock()` / `bridge_unlock()`, which are no-ops in the draft.
-   Point them at the same guard Firebird's GUI uses before relying on this under
-   load. (Firebird's Qt keypad bridge calls `keypad_set_key` directly from the
-   GUI thread, so direct calls mostly work, but the lock is the correct fix.)
+   thread-safe. Arrow input already avoids the problem by going through the
+   tick, so `touchpad_set_state` runs on the emulation thread. The remaining
+   core calls (`SHOT`, matrix keys) are still made from a socket thread and are
+   wrapped in `bridge_lock()` / `bridge_unlock()`, which are **no-ops**: point
+   them at the same guard Firebird's GUI uses before leaning on this hard.
+   (Firebird's own Qt keypad bridge calls `keypad_set_key` straight from the GUI
+   thread, so direct calls mostly work, but the lock is the correct fix.)
 4. On Windows, spawn the accept loop with `CreateThread` / `_beginthread`
    instead of pthreads (there is a `_WIN32` branch stubbed in already).
 
@@ -104,7 +108,7 @@ here:
 | `A`..`Z`           | shift + that letter               |
 | `~ctrl_<x>~`       | ctrl held + `<x>`                 |
 | `~shift_<x>~`      | shift held + `<x>`               |
-| `~up/down/left/right~` | touchpad edge tap             |
+| `~up/down/left/right~` | touchpad press at that edge   |
 | `~shift_grab~`     | touchpad press-hold (select)      |
 
 ## Arrow keys: two things that are easy to get wrong
@@ -112,16 +116,29 @@ here:
 Both of these were found by measuring against a booted OS, stepping through a
 file list and reading back which row was selected.
 
-**Hold time.** The guest OS does its own key auto-repeat while a direction is
-held, and it starts fast. Measured, one press of "down":
+**Hold time, and whose clock you measure it on.** The guest OS does its own key
+auto-repeat while a direction is held, and it starts fast. Measured, one press
+of "down":
 
-| hold | result |
+| hold (guest time) | result |
 | --- | --- |
 | 8, 10, 12 ms | exactly one item, 5 times out of 5 |
 | 15 ms | double-stepped once in 5 |
 | 20, 30, 40 ms | always two items |
 
-So a 30 ms hold makes every arrow skip an item. `BR_ARROW_HOLD_MS` is 10 ms.
+So a long hold makes every arrow skip an item. But holding for a span of
+**wall-clock** time does not buy you a predictable span of **guest** time: the
+emulator throttles in 10 ms slices of virtual time and runs flat out inside each
+slice, so how much guest time a `usleep` covers depends on host load. Sleeping
+10 ms on a socket thread therefore behaved while the emulator was idle and went
+haywire once nRemote started polling the screen twenty times a second.
+
+Arrows are instead queued and applied by `nremote_bridge_tick()`, which
+`gui_do_stuff` calls from the emulation thread once per virtual 10 ms slice. A
+press then lasts exactly one slice of guest time whatever the host is doing, and
+`touchpad_set_state` runs on the emulation thread where it belongs. Verified at
+one item per press both idle and with 905 concurrent screen fetches in flight.
+
 Ordinary matrix keys are unaffected and still use `BR_TAP_MS`.
 
 **Which coordinates.** An arrow is a press at the **extreme** edge with contact

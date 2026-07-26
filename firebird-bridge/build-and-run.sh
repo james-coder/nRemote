@@ -30,18 +30,50 @@ git -C "$FB" submodule update --init --recursive
 
 echo ">> installing the nRemote bridge into the headless build"
 cp "$HERE/nremote_bridge.c" "$FB/headless/nremote_bridge.c"
+cp "$HERE/nremote_os.cpp"   "$FB/headless/nremote_os.cpp"
 
 MK="$FB/headless/Makefile"
 grep -q 'nremote_bridge.c' "$MK" || \
     sed -i 's#\.\./core/os/os-linux\.c#../core/os/os-linux.c nremote_bridge.c#' "$MK"
+grep -q 'nremote_os.cpp' "$MK" || \
+    sed -i 's#main\.cpp \\#main.cpp nremote_os.cpp \\#' "$MK"
 grep -q -- '-lpthread' "$MK" || sed -i 's#^LIBS := -lz#LIBS := -lz -lpthread#' "$MK"
 
 MAIN="$FB/headless/main.cpp"
 grep -q 'nremote_bridge_start' "$MAIN" || {
-    # file-scope declaration (extern "C" cannot be block-scoped in C++)
-    sed -i 's#\(static const uint32_t default_rampayload_base = 0x10000000;\)#\1\n\n// nRemote bridge entry point (nremote_bridge.c, C linkage).\nextern "C" void nremote_bridge_start(int port);#' "$MAIN"
-    # call it after emu_start(), just before the emulation loop
-    sed -i 's#turbo_mode = true;#nremote_bridge_start(3334);\n\tturbo_mode = true;#' "$MAIN"
+    python3 - "$MAIN" <<'PYEOF'
+import sys
+p = sys.argv[1]; s = open(p).read()
+
+# File-scope declarations: a C++ extern "C" linkage spec cannot live inside a
+# function body, and gui_do_stuff() below needs the tick declared before it.
+s = s.replace('#include "core/usblink_queue.h"',
+              '#include "core/usblink_queue.h"\n\n'
+              '// nRemote bridge (nremote_bridge.c, C linkage).\n'
+              'extern "C" void nremote_bridge_start(int port);\n'
+              'extern "C" void nremote_bridge_tick(void);', 1)
+
+# Start the server after emu_start(), just before the emulation loop. Turbo off
+# so the guest runs at roughly real speed.
+s = s.replace("turbo_mode = true;",
+              "nremote_bridge_start(3334);\n\tturbo_mode = false;", 1)
+
+# The core calls gui_do_stuff() once per virtual 10 ms slice on the emulation
+# thread. The bridge applies queued arrow presses there, so a press lasts a
+# fixed amount of GUEST time regardless of host load.
+s = s.replace("void gui_do_stuff(bool wait)\n{\n}",
+              "void gui_do_stuff(bool wait)\n{\n    (void)wait;\n    nremote_bridge_tick();\n}", 1)
+
+# Headless stubs this as a no-op, so nothing ever throttles: the guest clock
+# races, its auto-power-down fires constantly, and input timing goes haywire.
+s = s.replace("void throttle_timer_wait(unsigned int usec) {}",
+              "void throttle_timer_wait(unsigned int usec) { if(usec) usleep(usec); }", 1)
+
+if "#include <unistd.h>" not in s:
+    s = "#include <unistd.h>\n" + s
+
+open(p, "w").write(s)
+PYEOF
 }
 
 echo ">> building firebird-headless"
