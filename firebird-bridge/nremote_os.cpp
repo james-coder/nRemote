@@ -14,6 +14,7 @@
 
 #include "core/usblink.h"
 #include "core/usblink_queue.h"
+#include "core/flash.h"
 
 extern "C" void nremote_send_os(const char *path)
 {
@@ -32,4 +33,17 @@ extern "C" void nremote_put_file(const char *local, const char *remote)
 extern "C" int nremote_usblink_ready(void)
 {
     return usblink_connected ? 1 : 0;
+}
+
+/*
+ * Persist the NAND to a file. The emulator maps the flash copy-on-write, so an
+ * OS you just installed lives only in memory and is lost on exit. Saving once
+ * after the first-boot install turns the flash into a ready-to-run image that
+ * boots straight to the OS.
+ */
+extern "C" int nremote_save_flash(const char *path)
+{
+    int r = flash_save_as(path);
+    fprintf(stderr, "nremote_bridge: flash_save_as('%s') -> %d\n", path, r);
+    return r;
 }

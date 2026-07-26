@@ -51,24 +51,34 @@ port 3334) and `fb-build/firebird/mkflash` + `flashinfo`.
 
 ## 2. Get boot2 and the OS
 
-Both live inside a 3.6 OS `.tno` (the same OS your handheld runs). A `.tno` is a
-63-byte text header followed by a standard ZIP; extract it and take two members:
+**boot2** lives inside a 3.6 OS `.tno`. A `.tno` is a 63-byte text header
+followed by a standard ZIP, so:
 
 ```
 # os.tno is the downloaded 3.6 OS file
 tail -c +64 os.tno > os.zip                 # strip the 63-byte header
-unzip os.zip boot2.img TI-Nspire.img        # boot2 (~977 KB), OS (~9.4 MB)
+unzip os.zip boot2.img                      # boot2 (~977 KB)
 ```
+
+**For the OS, use the `.tno` file itself — not the extracted `TI-Nspire.img`.**
+This matters and is easy to get wrong: Firebird validates an OS with
+`flash_os_info()`, which searches the first 1024 bytes for a `"TI-Nspire.<ext>"`
+header. Only the `.tno` has it (`TI-Nspire.tno 3.60.550 ...`); the extracted
+`.img` does not. Preloading the bare `.img` builds a flash that boots fine but
+makes boot2 report **`Error loading OS image. Removing OS remnants.`** and land
+on "Operating System not found. Install OS now.".
+
 See [`../docs/EMULATION.md`](../docs/EMULATION.md) for the full `.tno` layout.
 
 ## 3. Create the flash
 
 ```
-fb-build/firebird/mkflash boot2.img TI-Nspire.img nspire.flash 0x0E0
+fb-build/firebird/mkflash boot2.img os.tno nspire.flash 0x0E0 [manuf.img]
 fb-build/firebird/flashinfo nspire.flash    # expect: product=0xE0 ... 32MB
 ```
 `0x0E0` is the non-CAS Touchpad (Firebird's own product code for it). The manuf
-area is synthesized; you do not supply one.
+area is synthesized when you omit the 5th argument; pass a real PolyDumper
+`manuf.img` to use the genuine one instead.
 
 ## 4. boot1 (the one piece you must provide)
 

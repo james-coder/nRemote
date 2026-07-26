@@ -64,6 +64,7 @@ extern void lcd_draw_frame(uint8_t *buffer);
 extern void nremote_send_os(const char *path);
 extern void nremote_put_file(const char *local, const char *remote);
 extern int  nremote_usblink_ready(void);
+extern int  nremote_save_flash(const char *path);
 
 /* Wrap every core access with Firebird's emulation-thread lock. Left as no-ops
  * in this draft; point them at the same guard the GUI uses (README). */
@@ -146,13 +147,20 @@ static void tap_matrix(int row, int col, int mod_row, int mod_col) {
     bridge_unlock();
 }
 
+/* An arrow press on a Touchpad model is a CLICK on the edge of the pad, not a
+ * resting finger: the guest only treats it as a direction key when down=true.
+ * (contact=true, down=false just moves the pointer and dialogs ignore it.) */
 static void tap_touchpad(float x, float y) {
     bridge_lock();
-    touchpad_set_state(x, y, true, false);   /* finger down, not clicked */
+    touchpad_set_state(x, y, true, true);       /* finger on pad, pad clicked */
     bridge_unlock();
     BR_SLEEP_MS(BR_TAP_MS);
     bridge_lock();
-    touchpad_set_state(0.f, 0.f, false, false); /* lift */
+    touchpad_set_state(x, y, true, false);      /* release the click */
+    bridge_unlock();
+    BR_SLEEP_MS(BR_TAP_MS / 2);
+    bridge_lock();
+    touchpad_set_state(0.f, 0.f, false, false); /* lift off */
     bridge_unlock();
 }
 
@@ -355,6 +363,12 @@ static void serve_client(int fd) {
                 } else {
                     send(fd, "ERR\n", 4, 0);
                 }
+            } else if (strncmp(line, "SAVEFLASH ", 10) == 0) {
+                /* Persist the NAND (with a freshly installed OS) to a file. */
+                char b[32];
+                int bn = snprintf(b, sizeof(b), "SAVED %d\n",
+                                  nremote_save_flash(line + 10));
+                send(fd, b, bn, 0);
             } else if (strcmp(line, "STATUS") == 0) {
                 char b[48];
                 int bn = snprintf(b, sizeof(b), "USBLINK %d\n", nremote_usblink_ready());
