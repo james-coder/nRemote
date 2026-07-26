@@ -36,12 +36,15 @@ void throttle_timer_on(){}
 void throttle_timer_wait(unsigned int){}
 
 int main(int argc, char **argv){
-    if(argc < 4){ fprintf(stderr,"usage: mkflash <boot2.img> <os.img> <out.flash> [productHex=0E0]\n"); return 2; }
+    if(argc < 4){ fprintf(stderr,"usage: mkflash <boot2.img> <os.img> <out.flash> [productHex=0E0] [manuf.img]\n"); return 2; }
     const char *boot2=argv[1], *os=argv[2], *out=argv[3];
     unsigned int product = (argc>4)? (unsigned)strtoul(argv[4],nullptr,16) : 0x0E0;
     bool is_cx = product >= 0x0F0;
     /* order: manuf(gen), boot2, diags(none), os  -- matches qmlbridge createFlash */
-    const char *preload[4] = { nullptr, boot2, nullptr, os };
+    // A real manuf dump (PolyDumper) is more faithful than the synthesized one;
+    // pass it as argv[5] to use it. nullptr = let Firebird generate manuf.
+    const char *manuf = (argc > 5) ? argv[5] : nullptr;
+    const char *preload[4] = { manuf, boot2, nullptr, os };
     uint8_t *nand=nullptr; size_t size=0;
     if(!flash_create_new(is_cx, preload, product, 0, is_cx, &nand, &size)){
         fprintf(stderr,"flash_create_new FAILED\n"); free(nand); return 1;
@@ -49,6 +52,7 @@ int main(int argc, char **argv){
     FILE *f=fopen(out,"wb");
     if(!f || fwrite(nand,1,size,f)!=size){ perror("write"); return 3; }
     fclose(f); free(nand);
-    printf("OK: wrote %s  (%zu bytes, product=0x%X, is_cx=%d)\n", out, size, product, is_cx);
+    printf("OK: wrote %s  (%zu bytes, product=0x%X, is_cx=%d, manuf=%s)\n",
+           out, size, product, is_cx, manuf ? manuf : "(generated)");
     return 0;
 }

@@ -16,10 +16,17 @@ OS, because that needs a Firebird build and a bootable flash (still blocked on a
 
 One socket, plain-text control lines, one length-prefixed PNG for the screen:
 
-| Client sends           | Server replies                       |
-|------------------------|--------------------------------------|
-| `SHOT\n`               | `IMG <len>\n` then `<len>` PNG bytes |
-| `KEY <nRemote-name>\n` | `OK\n`                               |
+| Client sends              | Server replies                       |
+|---------------------------|--------------------------------------|
+| `SHOT\n`                  | `IMG <len>\n` then `<len>` PNG bytes |
+| `KEY <nRemote-name>\n`    | `OK\n`                               |
+| `OS <path-to-.tno>\n`     | `OK\n` (installs an OS over the emulated USB link) |
+| `PUT <local>::<remote>\n` | `OK\n` (pushes a file to the emulated device) |
+| `STATUS\n`                | `USBLINK <0\|1>\n`                   |
+
+`OS` and `PUT` go through Firebird's `usblink` queue (drained by the emulation
+loop), so they only act once `STATUS` reports `USBLINK 1`. `OS` is what gets a
+freshly created flash past boot2's "Operating System not found. Install OS now."
 
 - **`SHOT`** grabs the LCD with `lcd_draw_frame()` (classic non-CX Nspire is
   4bpp grayscale, 320x240), expands to 8-bit gray, and sends a PNG (encoded with

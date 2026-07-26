@@ -59,6 +59,12 @@ extern void keypad_on_pressed(void);
 extern void touchpad_set_state(float x, float y, bool contact, bool down);
 extern void lcd_draw_frame(uint8_t *buffer);
 
+/* USB-link helpers, implemented in nremote_os.cpp (Firebird's queue header is
+ * C++ only). Used by the OS / PUT commands to install an OS or push a file. */
+extern void nremote_send_os(const char *path);
+extern void nremote_put_file(const char *local, const char *remote);
+extern int  nremote_usblink_ready(void);
+
 /* Wrap every core access with Firebird's emulation-thread lock. Left as no-ops
  * in this draft; point them at the same guard the GUI uses (README). */
 static void bridge_lock(void)   { /* TODO: acquire Firebird emu mutex */ }
@@ -335,6 +341,24 @@ static void serve_client(int fd) {
             } else if (strncmp(line, "KEY ", 4) == 0) {
                 handle_key(line + 4);
                 send(fd, "OK\n", 3, 0);
+            } else if (strncmp(line, "OS ", 3) == 0) {
+                /* Install an OS (.tno) into a flash that has none yet. */
+                nremote_send_os(line + 3);
+                send(fd, "OK\n", 3, 0);
+            } else if (strncmp(line, "PUT ", 4) == 0) {
+                /* PUT <local>::<remote> pushes a file to the emulated device. */
+                char *sep = strstr(line + 4, "::");
+                if (sep) {
+                    *sep = '\0';
+                    nremote_put_file(line + 4, sep + 2);
+                    send(fd, "OK\n", 3, 0);
+                } else {
+                    send(fd, "ERR\n", 4, 0);
+                }
+            } else if (strcmp(line, "STATUS") == 0) {
+                char b[48];
+                int bn = snprintf(b, sizeof(b), "USBLINK %d\n", nremote_usblink_ready());
+                send(fd, b, bn, 0);
             } else if (line[0]) {
                 send(fd, "ERR\n", 4, 0);
             }

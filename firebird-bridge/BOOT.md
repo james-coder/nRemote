@@ -4,27 +4,42 @@ This is the end-to-end runbook for running an emulated TI-Nspire (via
 [Firebird](https://github.com/nspire-emus/firebird)) and controlling it with the
 nRemote GUI, using the bridge in this folder. Tracking issue #19.
 
-## What is proven vs pending
+## What is proven
 
-Verified on Linux (WSL2), g++ / make / zlib, no Qt:
+Verified on Linux (WSL2), g++ / make / zlib, no Qt, against a real dumped boot1:
 
 - Firebird's **headless** core builds (`headless/Makefile`, portable ARM
-  interpreter + x86-64 JIT).
-- The nRemote **bridge compiles and links into that binary**
+  interpreter + x86-64 JIT), with the nRemote **bridge compiled and linked in**
   (`nremote_bridge_start` resolves against the real `keypad_set_key` /
   `lcd_draw_frame` / `touchpad_set_state`).
 - A **flash image is created** from boot2 + OS with `tools/mkflash`. Firebird
-  **generates the manuf area itself** (product/keypad/LCD/clocks), so no manuf
-  dump is needed. `tools/flashinfo` reads it back as product `0x0E0` (Touchpad),
-  32 MB SDRAM, with the BOOT2 and TI-Nspire tags at their partition offsets.
-- With a placeholder boot1 the emulator accepts the flash and enters the
-  emulation loop.
+  **generates the manuf area itself** (product/keypad/LCD/clocks), so a manuf
+  dump is optional; pass one as argv[5] to use the real thing instead.
+  `tools/flashinfo` reads it back as product `0x0E0` (Touchpad), 32 MB SDRAM.
+- **The machine boots.** With a real boot1 the log shows
+  `Boot Loader Stage 1 (1.1.8916)` -> `Boot Loader Stage 2 (3.01.131)`
+  ("Using production keys") -> `NAND Flash ID: ST Micro NAND256R3A` ->
+  Datalight Reliance filesystem -> `Filesystem ready`, and the LCD shows the
+  TI-Nspire splash with a progress bar.
+- **The bridge works against real emulated hardware.** `SHOT` returns valid PNGs
+  of the boot splash (decoded by Java `ImageIO`), and `KEY i` drives boot2's raw
+  keypad read to trigger the factory-image install. This is a capability the
+  NavNet path does *not* have: the bridge sets the emulated keypad matrix
+  registers directly, so it can answer pre-OS prompts that ignore OS-level key
+  events.
 
-Pending, and the reason this is not yet a full boot:
+## Still to finish
 
-- A **boot1 image** (see below). It is the one input that cannot be generated.
-- Exercising the bridge against the booted OS (screen mirror + keys), and wiring
-  `bridge_lock` / `bridge_unlock` to Firebird's emulation-thread guard.
+- Getting the OS all the way installed: after the factory-image step boot2 can
+  report `Error loading OS image. Removing OS remnants.` and land on
+  "Operating System not found. Install OS now.". The bridge's `OS <path.tno>`
+  command streams an OS over the emulated USB link (Firebird's `usblink` queue)
+  to get past this; see `README.md`.
+- `turbo_mode` is on in the headless runner, so the guest's auto-power-down
+  timer fires in seconds of wall clock: expect periodic
+  `Received TI_OFFSYNC_APD_REQ` + reset. Send a key periodically to keep it
+  awake, or drop turbo.
+- Wiring `bridge_lock` / `bridge_unlock` to Firebird's emulation-thread guard.
 
 ## 1. Build
 
@@ -58,19 +73,48 @@ area is synthesized; you do not supply one.
 ## 4. boot1 (the one piece you must provide)
 
 Firebird also needs **boot1**, the Nspire's first-stage bootrom. It is baked into
-the calculator's ASIC, it is TI's code, and Firebird cannot generate it, so it is
-not created by any step above and it is not included here. You have to supply a
-`boot1.img` (a ~512 KB image) yourself. Options, your call:
+the calculator's ASIC and it is TI's code, so Firebird cannot generate it and it
+is **not** included here. It is also not legitimately downloadable: Firebird's
+own setup wiki and Hackspire both state that distributing calculator ROM images
+is not legal and that you must dump it from **your own** device.
 
-- If you already have a boot1 from earlier Nspire work, use it.
-- Choose a source you are comfortable with, the same way the OS `.tno` was
-  sourced.
-- It can be dumped from a physical Nspire with Ndless, but that installs software
-  on the device, so do not do that to the borrowed handheld (it would break the
-  "leave it exactly as found" rule in `../tests/hardware/README.md`).
+Dumping it (the supported route, and the one used here):
 
-boot1 is model-family specific; use a classic (non-CX) Nspire boot1 to match the
+1. Install **Ndless** (r2022 covers classic Clickpad/Touchpad on OS 3.1.0.392,
+   3.6.0.546, 3.9.0.463, 3.9.1.38). Put `ndless_installer_<ver>.tns` and
+   `ndless_resources.tns` in a top-level folder named exactly `ndless`, open the
+   installer, press **menu**. On 3.6 the install is **non-persistent**: a reboot
+   removes it entirely, and it writes nothing to NAND.
+2. Run **PolyDumper 5.0** (TI-Planet archive id 3829). On a classic it writes
+   `boot1.img.tns`, `boot1alt.img.tns`, `boot2.img.tns`, `diags.img.tns` and
+   `manuf.img.tns` **next to its own .tns**.
+3. Copy them back to the PC. `boot1.img.tns` is a **raw** dump (no `.tns`
+   wrapper is added), so Firebird takes it as-is; renaming to `boot1.img` is
+   cosmetic.
+
+Two things that bite when doing this remotely over the TI link:
+
+- PolyDumper ends with `while(!any_key_pressed())`, and libndls'
+  `any_key_pressed()` reads the **raw keypad matrix** and the I2C touchpad, not
+  the OS event queue. Remotely injected keys can never satisfy it, so **a human
+  must press one physical key** to let it exit. The dump files are already
+  written and closed before that pause.
+- While a native Ndless program runs it owns USB, so the calculator disappears
+  from the link (`getConnectedNodes()` returns 0). That is normal, not a crash.
+
+**Sanity-check the result:** a classic boot1 is exactly **0x80000 (524,288)
+bytes** and starts with an ARM vector table, typically `18 f0 9f e5` repeated
+(`LDR PC, [PC, #0x18]`). Entropy around 6 bits/byte. All-`0xFF`/all-`0x00`
+means an empty dump.
+
+boot1 is model-family specific; use a classic (non-CX) boot1 to match the
 `0x0E0` flash above.
+
+> If the handheld is borrowed, note that installing Ndless is a device
+> modification. It is reversible (reboot clears it) and touches no boot
+> partition, but flash wear from ~2.5 MB of dump writes is not, so "exactly as
+> found" is functional rather than byte-for-byte. Get the owner's consent, back
+> up the documents first, and see `../tests/hardware/README.md`.
 
 ## 5. Run it and connect nRemote
 
